@@ -169,7 +169,14 @@ language sql stable as $$
       -- hid exactly 0 rows while costing an ILIKE on every row the geo index
       -- returned (18,823 for one Lahore search), and it was a landmine: the
       -- day that column fills with different garbage it would start hiding
-      -- real businesses. Closure signal comes from user reports and `state`.
+      -- real businesses.
+      --
+      -- And there is no other closure signal to substitute: `state` is
+      -- PROVENANCE (seed_only / google_only / google_matched), not status.
+      -- User reports are the only closure signal this product has, which is
+      -- why the report flow is one tap and why unverified rows say so
+      -- ("From public map data · not yet verified") instead of implying
+      -- they were checked.
       and (
         pr.raw_q is null
         or p.name_norm % pr.nq                              -- trigram (typos)
