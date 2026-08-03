@@ -281,8 +281,9 @@ Business owners: if a listing is wrong, tap "Suggest an edit" in the app.
 ```
 
 **Assets checklist**
-- [ ] Icon 512×512 (generated — see `scripts/make-icons.py`)
-- [ ] Feature graphic 1024×500 — **not yet made**
+- [x] Icon 512×512 — generated, `scripts/make-icons.py`
+- [x] Feature graphic 1024×500 — generated, `scripts/make-feature-graphic.py`,
+      set in the app's real typefaces so listing and product match
 - [ ] Phone screenshots ×4 minimum: Explore, a place, search, saved
 - [ ] 7-inch and 10-inch tablet screenshots if declaring tablet support
       (`supportsTablet: true` is set for iOS; decide for Android)
