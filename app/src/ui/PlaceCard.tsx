@@ -20,6 +20,7 @@ import { enter } from './enter';
 import { colors, radius, space, categoryMeta, type as typo } from '../theme';
 import { formatPrice, isOpenNow, type Place } from '../data';
 import { OpenState, RatingPill, Tap, Txt } from './primitives';
+import { Icon, categoryIcon } from './Icon';
 import { useScheme } from './useScheme';
 
 export function formatDistance(m?: number | null): string | null {
@@ -88,7 +89,16 @@ function PlaceCardBase({
               recyclingKey={place.id}
             />
           ) : (
-            <Txt variant="title" style={{ opacity: 0.35 }}>{meta.icon}</Txt>
+            /* Feather, not the emoji in categoryMeta: this app's own
+               Icon.tsx calls emoji-as-icons an "instantly amateur" tell —
+               they render differently per OS, ignore our colour and stroke
+               weight, and sit on their own baseline. */
+            <Icon
+              name={categoryIcon[place.categoryBucket ?? 'other']}
+              size={22}
+              color={meta.tint}
+              muted
+            />
           )}
         </View>
 
