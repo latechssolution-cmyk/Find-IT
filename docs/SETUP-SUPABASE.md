@@ -1,5 +1,10 @@
 # Going cloud: Supabase in ~10 minutes
 
+> **Status: DONE (2026-08-03).** Live project: `tppfsqrnyknvabrslxdk`,
+> region **ap-south-1 (Mumbai)** — measured 68 ms from Pakistan vs 107 ms
+> for Singapore. All three cities loaded; app verified end to end.
+> This doc stays as the runbook for re-loading and for future projects.
+
 Everything below is already built and waiting on two environment variables.
 The app runs identically either way — `DataSource` is the seam — so this is
 a config flip, not a migration.
@@ -43,6 +48,22 @@ a config flip, not a migration.
 5. **(Optional) Phone OTP** — Authentication → Providers → Phone.
    Free path: enable the built-in test provider first; real SMS later needs
    Twilio/MessageBird credits, so defer until launch.
+
+## Hard-won connection facts (this network, this stack)
+
+- **The direct DB host (`db.<ref>.supabase.co`) is IPv6-only.** From an
+  IPv4-only ISP it fails DNS. Use the **session pooler**:
+  `postgres.<ref>@aws-X-<region>.pooler.supabase.com:6543`. Region unknown?
+  `pipeline/probe_region.py` finds it (wrong region answers
+  "Tenant or user not found"; DNS failures are just ISP flake — retry).
+- **psycopg needs `prepare_threshold=None`** on the transaction pooler —
+  backend hopping collides auto-prepared statements mid-load.
+- **Publishable keys and the Data API**: `sb_publishable_*` may 401 with
+  `INVALID_API_KEY_TYPE` on a virgin project; it started working once the
+  schema (with RLS policies) was applied. Send it as BOTH `apikey` and
+  `Authorization: Bearer` (supabase-js does this automatically).
+- **Never ship the secret key.** It belongs nowhere in `app/`; loaders use
+  the direct Postgres DSN instead (`pipeline/.env.supabase`, gitignored).
 
 ## Free-tier ceilings to respect
 

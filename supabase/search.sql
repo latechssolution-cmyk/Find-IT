@@ -215,7 +215,10 @@ language sql stable as $$
     s.dist,
     s.rating, s.rating_count, s.fi_rating, s.fi_rating_count,
     s.price_range, s.hours, s.open_flag,
-    s.photo_urls, s.cards_ok, s.menu_url,
+    -- one photo, not five: result cards render a single thumbnail, and the
+    -- extra URLs are ~60 KB per browse. The detail screen re-fetches the
+    -- full row (getPlace) and gets the whole gallery.
+    (s.photo_urls)[1:1], s.cards_ok, s.menu_url,
     s.state,
     (0.40 * s.rel
    + 0.25 * s.quality
