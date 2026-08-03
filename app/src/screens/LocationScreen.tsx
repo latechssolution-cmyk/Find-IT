@@ -128,7 +128,9 @@ export default function LocationScreen() {
       const seq = ++countSeq.current;
       const n = await getDataSource()
         .countInRadii({ lat: center.lat, lng: center.lng, radiusM }, [radiusM])
-        .then((rows) => rows.find((r) => r.radiusM === radiusM)?.count ?? 0)
+        // null, not 0, when the row is missing: "0 places" is a claim, and
+        // a missing row means we don't know rather than that it's empty.
+        .then((rows) => rows.find((r) => r.radiusM === radiusM)?.count ?? null)
         .catch(() => null);
       // Ignore a slow reply that lost the race to a newer drag.
       if (seq === countSeq.current) setCount(n);

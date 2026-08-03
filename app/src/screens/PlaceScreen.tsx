@@ -216,7 +216,11 @@ export default function PlaceScreen() {
   const { shown: shownFacets, rest: restFacets } = splitFacets(
     facets.filter((f) => f.tone !== 'warn'),
   );
-  const hasFindIt = (place.fiRatingCount ?? 0) > 0;
+  // Guard on the VALUE we render, not just the count beside it: the shelf
+  // draws `fiRating ?? 0`, so a row with a count but a null average would
+  // publish "0.0" as if it were a real score. Data invariants say that can't
+  // happen; the shelf shouldn't depend on them holding.
+  const hasFindIt = (place.fiRatingCount ?? 0) > 0 && place.fiRating != null;
   const callFirst = CALL_FIRST_BUCKETS.has(place.categoryBucket ?? '');
   const socialLink = place.socials?.find((s) => /facebook\.com/.test(s)) ?? null;
 
