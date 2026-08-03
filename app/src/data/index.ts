@@ -24,6 +24,9 @@ const CLOUD_RETRY_TIMEOUT_MS = 4000;
 /** Sentinel so a deadline is distinguishable from a genuine failure. */
 const TIMED_OUT = Symbol('cloud-timeout');
 
+/** Postgres: "canceling statement due to statement timeout". */
+const PG_STATEMENT_TIMEOUT = '57014';
+
 let instance: DataSource | null = null;
 let localInstance: LocalSource | null = null;
 
@@ -110,7 +113,13 @@ class ResilientSource implements DataSource {
       // makes the user wait through the whole deadline twice: measured at
       // 12.5s before this distinction, against ~6s after. Nobody watches a
       // skeleton for twelve seconds; they close the app.
-      if (e === TIMED_OUT) throw e;
+      // 57014 is Postgres cancelling a statement that blew the server's own
+      // timeout. It arrives as a rejection, so it looks retryable — but the
+      // query was too slow for the tier, and asking again 350ms later gets
+      // the same verdict a second time. Measured against the live tier right
+      // after a bulk load: "biryani" failed this way at 4.8s, so retrying
+      // cost the user ~9s to reach the bundle instead of ~5s.
+      if (e === TIMED_OUT || (e as { code?: string })?.code === PG_STATEMENT_TIMEOUT) throw e;
       await new Promise((r) => setTimeout(r, 350));
       return this.withDeadline(run(this.cloud), CLOUD_RETRY_TIMEOUT_MS);
     }
