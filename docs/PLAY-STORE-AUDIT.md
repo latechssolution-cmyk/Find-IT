@@ -40,13 +40,14 @@ which for **this** app means:
    may serve to children, personalized ads and remarketing must be off, and
    the advertising ID cannot be collected from children. Your effective CPM
    drops substantially — non-personalized ads in Pakistan earn very little.
-2. **Reviews become a child-safety surface.** FIND IT carries user-generated
-   content, so the
+2. **Unmoderated reviews aimed at children.** To be precise about scope: the
    [Child Safety Standards policy](https://support.google.com/googleplay/android-developer/answer/14747720)
-   applies: published anti-CSAE standards, an in-app reporting mechanism, a
-   designated safety contact, and a documented moderation process. You
-   currently have no moderation pipeline at all — reviews are stored locally
-   and sync unmoderated.
+   covers *"Anonymous and Random Chat apps, and apps in the Social and Dating
+   categories"* — **not** every app with UGC, so it does **not** bind FIND IT
+   as a Maps app. But the Families policy independently expects
+   child-appropriate content, and free-text reviews written by strangers,
+   with no moderation pipeline at all, is exactly the surface a reviewer
+   probes on a child-audience app.
 3. **The core product is arguably adult-shaped.** The app's primary actions
    are *call this business*, *open WhatsApp to a stranger*, and *navigate
    here*. Reviewers assess whether a child audience is plausible; an app whose
@@ -90,7 +91,7 @@ a child audience are marked ⚠️ FAMILIES.*
 | **Foreground location** | Yes | ✅ pass | Coarse + fine only, background explicitly blocked in `app.json`. No declaration form needed. Keep the prominent-disclosure primer you already have in onboarding | [Location permissions](https://support.google.com/googleplay/android-developer/answer/9799150) |
 | **Background location declaration** | No | ⚪ N/A | `ACCESS_BACKGROUND_LOCATION` is in `blockedPermissions`. This avoids the hardest permission review on Play — do not regress it | — |
 | **Content rating (IARC)** | Yes | ❌ TODO | Answer honestly, including that the app has UGC. Misdeclaring is a suspension risk | [Ratings](https://support.google.com/googleplay/android-developer/answer/9859655) |
-| **Child Safety Standards** | ⚠️ FAMILIES / UGC | ❌ TODO | Required for social/UGC apps. Publish anti-CSAE standards, provide reporting, name a safety contact | [Child Safety Standards](https://support.google.com/googleplay/android-developer/answer/14747720) |
+| **Child Safety Standards** | ⚪ **N/A — verified 4 Aug** | — | Scope is *"Anonymous and Random Chat apps, and apps in the Social and Dating categories"* — **not** every app with user-generated content. FIND IT is Maps & Navigation / Travel & Local, so it does not apply. *(I initially wrote that our reviews triggered it; that was wrong.)* It **would** apply if the app were ever listed under Social | [Child Safety Standards](https://support.google.com/googleplay/android-developer/answer/14747720) |
 | **Families Self-Certified Ads SDK** | ⚠️ FAMILIES only | ⚪ N/A at 13+ | Under-13 forces certified SDKs + non-personalized ads only | [Families ads](https://support.google.com/googleplay/android-developer/answer/9900633) |
 | **Play Billing for digital goods** | Only if paid features | ⚪ N/A today | If you sell in-app (e.g. business listings upgrades), Play Billing is mandatory for *digital* goods. Selling **physical** services or ads to businesses is out of scope for Billing | [Payments](https://support.google.com/googleplay/android-developer/answer/9858738) |
 | **12 testers × 14 days closed testing** | If personal account created after 13 Nov 2023 | ⚠️ UNKNOWN | You didn't specify account type. If personal-new: recruit 12 real testers, keep them opted in 14 continuous days, then apply for production | [Testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465) |
@@ -225,6 +226,73 @@ Internal → closed (satisfies the tester rule) → production at **20% staged
 rollout**. Halt if crash rate exceeds 1% or ANR exceeds 0.4%; advance to 50%
 then 100% over ~5 days if vitals hold.
 
+### Store listing — draft copy
+
+Written against the metadata rules: no keyword stuffing, no competitor names,
+no claims the app doesn't deliver, no "#1 / best" superlatives.
+
+**Title** (30 char limit)
+```
+FIND IT — Places in Pakistan
+```
+
+**Short description** (80 char limit)
+```
+Find shops, food and services near you. Works offline. Real hours and ratings.
+```
+
+**Full description** (4000 char limit)
+```
+FIND IT helps you find local businesses across Pakistan — restaurants,
+pharmacies, salons, mechanics, tailors, schools and much more.
+
+WHAT MAKES IT USEFUL
+
+Over 100,000 places, and growing
+Faisalabad, Islamabad, Rawalpindi and Lahore, compiled from open map data
+and checked against public listings.
+
+Search that forgives spelling
+Type "birayni", "pharmecy" or "saloon" and still find what you meant. Search
+in Urdu too — بریانی works.
+
+Landmarks, not just addresses
+"170 m from Kamran Sweets and Bakers" is more useful than a street name, so
+that is what we show.
+
+Works without a connection
+Your city is stored on your device. Search, hours, phone numbers and saved
+places all work with no signal.
+
+Honest about what we know
+Places we have not verified say so. Ratings from few reviewers are marked as
+such, rather than presented as if they were solid.
+
+Call or WhatsApp in one tap
+Directions hand off to your maps app.
+
+PRIVACY
+
+No account required. Your location is used to find places near you and is
+never collected in the background. Your saved places and reviews stay on your
+device. No ads, no trackers.
+
+Business owners: if a listing is wrong, tap "Suggest an edit" in the app.
+```
+
+**Assets checklist**
+- [ ] Icon 512×512 (generated — see `scripts/make-icons.py`)
+- [ ] Feature graphic 1024×500 — **not yet made**
+- [ ] Phone screenshots ×4 minimum: Explore, a place, search, saved
+- [ ] 7-inch and 10-inch tablet screenshots if declaring tablet support
+      (`supportsTablet: true` is set for iOS; decide for Android)
+
+**Note on the description:** every claim in it is one this build actually
+delivers, verified today — the typo tolerance, the Urdu search, the landmark
+line, the offline path, and the "not yet verified" labelling. Do not add a
+claim here without checking it is still true; unverifiable claims are a
+documented rejection reason.
+
 ---
 
 # Consolidated go/no-go checklist
@@ -247,7 +315,9 @@ then 100% over ~5 days if vitals hold.
 - [ ] RTL verified with Urdu names
 - [ ] Process-death / state restoration checked
 - [ ] Pre-launch report reviewed
-- [ ] Child Safety Standards published (UGC app)
+- [x] ~~Child Safety Standards~~ — verified N/A for a Maps app (scope is
+      Anonymous/Random Chat, Social, Dating). Revisit only if the listing
+      category changes
 
 ### 🟡 Polish
 - [x] ~~Launcher icon~~ — was Expo's **default blue chevron** on a leftover
