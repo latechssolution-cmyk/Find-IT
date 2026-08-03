@@ -24,21 +24,25 @@ import { useScheme } from '../ui/useScheme';
 import { enter } from '../ui/enter';
 import { reverseGeocode, useLocation } from '../hooks/useLocation';
 import { track } from '../hooks/analytics';
+import { FilterSheet } from '../ui/FilterSheet';
 
 /**
  * Second chip row: needs, not categories. Multi-select ANDed filters over the
  * facet layer. "Open now" is here too — it's the single most common need and
  * burying it in a filter sheet is the classic way to lose it.
  */
-const NEEDS: { key: string; label: string; icon: IconName }[] = [
+const NEEDS: { key: string; label: string; icon: IconName; hint?: string }[] = [
   { key: 'open', label: 'Open now', icon: 'clock' },
-  { key: 'cards', label: 'Cards', icon: 'credit-card' },
-  { key: 'delivery', label: 'Delivery', icon: 'truck' },
-  { key: 'halal', label: 'Halal', icon: 'check-circle' },
-  { key: 'kids', label: 'Kids', icon: 'smile' },
-  { key: 'parking', label: 'Parking', icon: 'square' },
-  { key: 'women', label: 'Women-owned', icon: 'award' },
+  { key: 'cards', label: 'Cards', icon: 'credit-card', hint: 'Card payments accepted' },
+  { key: 'delivery', label: 'Delivery', icon: 'truck', hint: 'Delivers to you' },
+  { key: 'halal', label: 'Halal', icon: 'check-circle', hint: 'Halal food' },
+  { key: 'kids', label: 'Kids', icon: 'smile', hint: 'Good for families' },
+  { key: 'parking', label: 'Parking', icon: 'square', hint: 'Has its own parking' },
+  { key: 'women', label: 'Women-owned', icon: 'award', hint: 'Women-owned business' },
 ];
+
+/** Everything except "Open now", which stays a first-class chip. */
+const SHEET_NEEDS = NEEDS.filter((n) => n.key !== 'open');
 
 const CHIPS: { key: CategoryBucket | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -63,6 +67,17 @@ export default function ExploreScreen() {
   const { coords, label, radiusM, setManual } = useLocation();
   const [cat, setCat] = useState<CategoryBucket | 'all'>('all');
   const [needs, setNeeds] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const openNow = needs.includes('open');
+  const sheetCount = needs.filter((n) => n !== 'open').length;
+
+  const toggleNeed = useCallback((key: string) => {
+    setNeeds((prev) => {
+      const on = !prev.includes(key);
+      if (on) track('filter_use', { key });
+      return on ? [...prev, key] : prev.filter((k) => k !== key);
+    });
+  }, []);
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -175,7 +190,15 @@ export default function ExploreScreen() {
           <Txt variant="body" muted>Search places, food, shops…</Txt>
         </Tap>
 
-        <View style={styles.pillRow}>
+        {/* One scrollable utility row instead of two stacked rows: place,
+            saved, the one need everybody wants, and everything else behind
+            a counted Filters pill. Reclaims ~44px of map. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillRow}
+          keyboardShouldPersistTaps="handled"
+        >
           <Tap
             onPress={() => router.push('/location')}
             haptic="light"
@@ -187,6 +210,44 @@ export default function ExploreScreen() {
               {label ?? 'Faisalabad'} · {(radiusM / 1000).toFixed(0)} km
             </Txt>
           </Tap>
+
+          <Tap
+            onPress={() => toggleNeed('open')}
+            haptic="light"
+            scaleTo={0.96}
+            accessibilityRole="button"
+            accessibilityState={{ selected: openNow }}
+            style={[
+              styles.locPill, curve,
+              openNow
+                ? { backgroundColor: c.brand, borderColor: c.brand }
+                : { backgroundColor: c.surface, borderColor: c.border },
+              shadow(sch, 1),
+            ]}
+          >
+            <Icon name="clock" size={12} color={openNow ? c.onBrand : c.textMuted} />
+            <Txt variant="caption" color={openNow ? c.onBrand : undefined}>Open now</Txt>
+          </Tap>
+
+          <Tap
+            onPress={() => setFiltersOpen(true)}
+            haptic="light"
+            scaleTo={0.96}
+            accessibilityLabel={`Filters${sheetCount ? `, ${sheetCount} active` : ''}`}
+            style={[
+              styles.locPill, curve,
+              sheetCount
+                ? { backgroundColor: c.brand, borderColor: c.brand }
+                : { backgroundColor: c.surface, borderColor: c.border },
+              shadow(sch, 1),
+            ]}
+          >
+            <Icon name="sliders" size={12} color={sheetCount ? c.onBrand : c.textMuted} />
+            <Txt variant="caption" color={sheetCount ? c.onBrand : undefined}>
+              {sheetCount ? `Filters · ${sheetCount}` : 'Filters'}
+            </Txt>
+          </Tap>
+
           <Tap
             onPress={() => router.push('/saved')}
             haptic="light"
@@ -196,7 +257,7 @@ export default function ExploreScreen() {
             <Icon name="bookmark" size={12} color={c.textMuted} />
             <Txt variant="caption">Saved</Txt>
           </Tap>
-        </View>
+        </ScrollView>
 
         <ScrollView
           horizontal
@@ -216,27 +277,17 @@ export default function ExploreScreen() {
           ))}
         </ScrollView>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          keyboardShouldPersistTaps="handled"
-        >
-          {NEEDS.map((n) => (
-            <Chip
-              key={n.key}
-              label={n.label}
-              icon={n.icon}
-              active={needs.includes(n.key)}
-              onPress={() => setNeeds((prev) => {
-                const on = !prev.includes(n.key);
-                if (on) track('filter_use', { key: n.key });
-                return on ? [...prev, n.key] : prev.filter((k) => k !== n.key);
-              })}
-            />
-          ))}
-        </ScrollView>
       </View>
+
+      <FilterSheet
+        visible={filtersOpen}
+        options={SHEET_NEEDS}
+        selected={needs}
+        onToggle={toggleNeed}
+        onClear={() => setNeeds((prev) => prev.filter((k) => k === 'open'))}
+        onClose={() => setFiltersOpen(false)}
+        resultCount={loading ? undefined : places.length}
+      />
 
       {/* ---- results sheet ---- */}
       <BottomSheet
