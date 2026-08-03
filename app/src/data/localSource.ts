@@ -11,7 +11,7 @@ import type {
 } from './types';
 import {
   DEFAULT_RADIUS_M, RADIUS_STEPS, distanceM, expand, guessCategory, isTypoOf,
-  norm, relevance, scorePlace, trigramSim,
+  norm, relevance, scorePlace, trigramSim, urduToLatin,
 } from './search';
 import { extractNeeds, parseFacets } from './facets';
 
@@ -163,7 +163,7 @@ export class LocalSource implements DataSource {
     // empties an otherwise-matching result set (facet coverage is partial —
     // Google only knows it for some places), retry as plain text: results
     // that ignore the need beat an empty screen.
-    const rawQ = (args.q ?? '').trim();
+    const rawQ = urduToLatin((args.q ?? '').trim());
     if (rawQ) {
       const ex = extractNeeds(rawQ);
       if (ex.facets.length) {
@@ -278,7 +278,7 @@ export class LocalSource implements DataSource {
   async suggest(q: string, lat?: number | null, lng?: number | null): Promise<Suggestion[]> {
     await this.ready();
     if (lat != null && lng != null) await this.ensureFor({ lat, lng });
-    const nq = norm(q);
+    const nq = norm(urduToLatin(q));
     if (nq.length < 2) return [];
     const origin = lat != null && lng != null ? { lat, lng } : null;
 

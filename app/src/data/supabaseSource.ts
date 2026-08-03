@@ -13,7 +13,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type {
   DataSource, GoogleReview, Place, SearchArgs, SearchResult, Suggestion,
 } from './types';
-import { DEFAULT_RADIUS_M, RADIUS_STEPS } from './search';
+import { DEFAULT_RADIUS_M, RADIUS_STEPS, urduToLatin } from './search';
 import { extractNeeds } from './facets';
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -100,9 +100,10 @@ export class SupabaseSource implements DataSource {
   async ready() {}
 
   async search(args: SearchArgs): Promise<SearchResult> {
-    // Same query-intent rule as the local source: "halal biryani" filters
-    // halal and searches biryani, relaxing to plain text if that empties.
-    const rawQ = (args.q ?? '').trim();
+    // Same query-edge rules as the local source: Urdu tokens translate to
+    // the Latin the index speaks, then "halal biryani" filters halal and
+    // searches biryani, relaxing to plain text if that empties.
+    const rawQ = urduToLatin((args.q ?? '').trim());
     if (rawQ) {
       const ex = extractNeeds(rawQ);
       if (ex.facets.length) {
@@ -163,7 +164,7 @@ export class SupabaseSource implements DataSource {
 
   async suggest(q: string, lat?: number | null, lng?: number | null): Promise<Suggestion[]> {
     const { data, error } = await this.client.rpc('suggest_places', {
-      q, lat: lat ?? null, lng: lng ?? null, lim: 8,
+      q: urduToLatin(q), lat: lat ?? null, lng: lng ?? null, lim: 8,
     });
     if (error) throw error;
     return ((data ?? []) as any[]).map((r: any): Suggestion => ({

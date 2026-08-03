@@ -68,6 +68,93 @@ export const SYNONYMS: Record<string, string[]> = {
   marquee: ['hall', 'marriage hall', 'banquet'],
 };
 
+/**
+ * Urdu script → the Latin token our index speaks. Business names in the data
+ * are overwhelmingly Latin, so an Urdu query matches NOTHING without this —
+ * in either tier (the SQL search is trigram/FTS over Latin name_norm too).
+ * Translation happens once at the query edge (see urduToLatin), keeping both
+ * engines untouched. Common food/anchor vocabulary; grows by observation.
+ */
+export const URDU_TOKENS: Record<string, string> = {
+  'بریانی': 'biryani',
+  'کراہی': 'karahi',
+  'کڑاہی': 'karahi',
+  'چائے': 'chai',
+  'ڈھابہ': 'dhaba',
+  'ہوٹل': 'hotel',
+  'کھانا': 'food',
+  'ریستوران': 'restaurant',
+  'ریسٹورنٹ': 'restaurant',
+  'پلاؤ': 'pulao',
+  'تکہ': 'tikka',
+  'بار بی کیو': 'bbq',
+  'ناشتہ': 'nashta',
+  'حلال': 'halal',
+  'مٹھائی': 'sweets',
+  'بیکری': 'bakery',
+  'برگر': 'burger',
+  'پیزا': 'pizza',
+  'آئس کریم': 'ice cream',
+  'جوس': 'juice',
+  'دودھ': 'milk',
+  'گوشت': 'meat',
+  'مرغی': 'chicken',
+  'مچھلی': 'fish',
+  'سبزی': 'vegetable',
+  'پھل': 'fruit',
+  'دوائی': 'pharmacy',
+  'دوا': 'pharmacy',
+  'میڈیکل': 'medical',
+  'ڈاکٹر': 'doctor',
+  'ہسپتال': 'hospital',
+  'کلینک': 'clinic',
+  'دندان': 'dentist',
+  'سکول': 'school',
+  'اسکول': 'school',
+  'کالج': 'college',
+  'اکیڈمی': 'academy',
+  'مسجد': 'mosque',
+  'بینک': 'bank',
+  'اے ٹی ایم': 'atm',
+  'پٹرول': 'petrol',
+  'مکینک': 'mechanic',
+  'ورکشاپ': 'workshop',
+  'درزی': 'tailor',
+  'حجام': 'barber',
+  'نائی': 'barber',
+  'سیلون': 'salon',
+  'پارلر': 'parlour',
+  'جم': 'gym',
+  'کریانہ': 'kiryana',
+  'دکان': 'store',
+  'بازار': 'bazaar',
+  'مارکیٹ': 'market',
+  'کپڑے': 'clothing',
+  'جوتے': 'shoes',
+  'موبائل': 'mobile',
+  'فرنیچر': 'furniture',
+  'لانڈری': 'laundry',
+  'فوٹو': 'photo',
+  'پرنٹنگ': 'printing',
+  'شادی ہال': 'marriage hall',
+  'ہال': 'hall',
+};
+
+const HAS_URDU = /[؀-ۿ]/;
+
+/** Translate any known Urdu tokens; unknown Urdu words pass through (they
+ *  can still trigram-match a name that carries Urdu). Latin text unchanged. */
+export function urduToLatin(q: string): string {
+  if (!HAS_URDU.test(q)) return q;
+  let out = q;
+  // Longest phrases first so 'شادی ہال' wins over bare 'ہال'.
+  for (const [ur, en] of Object.entries(URDU_TOKENS)
+    .sort((a, b) => b[0].length - a[0].length)) {
+    out = out.split(ur).join(en);
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}
+
 const CATEGORY_WORDS: Record<string, CategoryBucket> = {
   restaurant: 'food_drink', food: 'food_drink', cafe: 'food_drink', chai: 'food_drink',
   bakery: 'food_drink', biryani: 'food_drink', bbq: 'food_drink', dhaba: 'food_drink',
