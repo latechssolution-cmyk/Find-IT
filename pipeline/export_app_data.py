@@ -138,7 +138,13 @@ def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
             "pr": r.get("price_range") or None,
             "h": r.get("hours"),
             "ck": bool(r.get("cards_ok")),
-            "ph_urls": list(r.get("photo_urls") or [])[:5],
+            # Two, not five. A bundled photo URL is a REMOTE fetch — when the
+            # user is genuinely offline none of them resolve, so the extra
+            # three only serve the narrow "cloud call failed but the network
+            # is up" case. One feeds the card thumbnail, the second keeps the
+            # detail gallery from being a lone image; the cloud carries the
+            # rest. Was the heaviest field in the bundle at 3.5 MB/city.
+            "ph_urls": list(r.get("photo_urls") or [])[:2],
             "menu": r.get("menu_url"),
             "order": r.get("order_online_url"),
             "gid": r.get("google_place_id"),
