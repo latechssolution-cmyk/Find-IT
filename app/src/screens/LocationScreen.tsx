@@ -90,6 +90,25 @@ export default function LocationScreen() {
     }, 400);
   }, [lift]);
 
+  /* --- keep the whole circle on screen ---
+     A visual radius picker that doesn't show the radius is just a slider
+     with extra steps: at 5 km the circle ran far outside the ~3 km of map
+     visible above the sheet, so the control's entire point was invisible.
+     Fit to the circle's bounding box whenever the radius changes — not on
+     pan, which would fight the user's own dragging. */
+  useEffect(() => {
+    const latPad = radiusM / 110_574;
+    const lngPad = radiusM / (111_320 * Math.cos((center.lat * Math.PI) / 180));
+    mapRef.current?.fitBounds(
+      [center.lng - lngPad, center.lat - latPad],
+      [center.lng + lngPad, center.lat + latPad],
+      // The bottom sheet covers roughly the lower third; padding keeps the
+      // circle inside the part of the map the user can actually see.
+      48,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radiusM]);
+
   /* --- live "N places within X km" (debounced 200 ms) --- */
   useEffect(() => {
     if (countTimer.current) clearTimeout(countTimer.current);
