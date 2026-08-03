@@ -361,7 +361,7 @@ export default function ExploreScreen() {
               <PlaceCard
                 place={item}
                 index={index}
-                visited={item.id === selected}
+                selected={item.id === selected}
                 onPress={() => openPlace(item)}
               />
             )}

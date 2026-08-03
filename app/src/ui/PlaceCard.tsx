@@ -45,8 +45,14 @@ export function formatDistance(m?: number | null): string | null {
 }
 
 function PlaceCardBase({
-  place, onPress, index = 0, visited,
-}: { place: Place; onPress?: () => void; index?: number; visited?: boolean }) {
+  place, onPress, index = 0, selected,
+}: {
+  place: Place;
+  onPress?: () => void;
+  index?: number;
+  /** This row's pin is the one currently picked on the map. */
+  selected?: boolean;
+}) {
   const sch = useScheme();
   const c = colors(sch);
   const meta = categoryMeta[place.categoryBucket ?? 'other'] ?? categoryMeta.other;
@@ -79,7 +85,7 @@ function PlaceCardBase({
     price,
     place.menuUrl ? 'has menu' : null,
     place.cardsOk ? 'accepts cards' : null,
-    visited ? 'visited' : null,
+    selected ? 'selected on map' : null,
   ].filter(Boolean).join(', ');
 
   return (
@@ -90,7 +96,15 @@ function PlaceCardBase({
         scaleTo={0.985}
         accessibilityRole="button"
         accessibilityLabel={spoken}
-        style={[styles.row, { borderBottomColor: c.border }]}
+        accessibilityState={{ selected: !!selected }}
+        /* Tapping a map pin scrolls this row into view — it has to be
+           obvious WHICH row answered. A tinted ground does that without
+           moving anything, so the list doesn't reflow under the finger. */
+        style={[
+          styles.row,
+          { borderBottomColor: c.border },
+          selected ? { backgroundColor: c.accentWash } : null,
+        ]}
       >
         <View style={[styles.thumb, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
           {photo ? (
@@ -121,11 +135,7 @@ function PlaceCardBase({
         <View style={styles.body}>
           {/* Sans, not serif, in list rows: the serif is reserved for the
               detail screen so it stays a moment rather than a texture. */}
-          <Txt
-            variant="heading"
-            numberOfLines={1}
-            color={visited ? c.textMuted : c.textHeading}
-          >
+          <Txt variant="heading" numberOfLines={1} color={c.textHeading}>
             {place.name}
           </Txt>
 
