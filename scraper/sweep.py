@@ -235,8 +235,23 @@ def wait_for_network(max_wait_s: int = 6 * 3600) -> bool:
 
 
 def safe_ingest(slug: str, d: Path) -> dict | None:
+    """Fold scraped rows into the city's parquet. Never fatal.
+
+    Catches SystemExit as well as Exception, which is not paranoia:
+    ingest_scrape is also a CLI, and it calls sys.exit() when a city has no
+    canonical.parquet — "run: python run_city.py <slug>". SystemExit derives
+    from BaseException, so a plain `except Exception` lets it through and the
+    SUPERVISOR dies. That is not hypothetical: only 3 of the 15 cities in
+    SWEEP_ORDER are seeded, so the first unseeded one (Karachi, straight
+    after Lahore) would have killed a multi-day unattended run at the tenth
+    batch. Scraped rows are already safe on disk either way; a failed ingest
+    must cost us a fold-in, never the sweep.
+    """
     try:
         return ingest_scrape.main(slug, d)
+    except SystemExit as e:
+        log(f"  ingest unavailable for '{slug}' ({e}) — rows kept on disk, sweep continues")
+        return None
     except Exception as e:
         log(f"  ingest failed (non-fatal, data is safe on disk): {e}")
         return None
