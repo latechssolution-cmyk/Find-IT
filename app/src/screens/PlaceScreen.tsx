@@ -32,7 +32,7 @@ import {
 import { parseFacets, splitFacets } from '../data/facets';
 import { Map } from '../ui/Map';
 import { MapBoundary } from '../ui/MapBoundary';
-import { PlaceCard, formatDistance } from '../ui/PlaceCard';
+import { PlaceCard, categoryLabel, formatDistance } from '../ui/PlaceCard';
 import { ClampText } from '../ui/ClampText';
 import { PopularTimes } from '../ui/PopularTimes';
 import { Freshness } from '../ui/Freshness';
@@ -344,7 +344,7 @@ export default function PlaceScreen() {
           {/* Serif carries place identity — the one editorial moment per screen */}
           <Txt variant="serifLg">{place.name}</Txt>
           <Txt variant="body" muted>
-            {[place.googleCategory ?? meta.label, formatPrice(place.priceRange),
+            {[categoryLabel(place), formatPrice(place.priceRange),
               formatDistance(place.distanceM)].filter(Boolean).join(' · ')}
           </Txt>
 

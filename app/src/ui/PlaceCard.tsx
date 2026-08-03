@@ -23,6 +23,22 @@ import { OpenState, RatingPill, Tap, Txt } from './primitives';
 import { Icon, categoryIcon } from './Icon';
 import { useScheme } from './useScheme';
 
+/**
+ * What kind of place this is, in prose.
+ *
+ * Google's own category when we have one. Otherwise the bucket's label —
+ * except for the catch-all bucket, whose label is "More". That reads fine on
+ * a filter chip ("More" categories) and badly anywhere it describes a single
+ * business, where it looks like a truncation or a link. Unenriched places
+ * are exactly the ones with no Google category, so they landed on it most.
+ */
+export function categoryLabel(place: Pick<Place, 'googleCategory' | 'categoryBucket'>): string {
+  if (place.googleCategory) return place.googleCategory;
+  const bucket = place.categoryBucket;
+  if (!bucket || bucket === 'other') return 'Local business';
+  return categoryMeta[bucket]?.label ?? 'Local business';
+}
+
 export function formatDistance(m?: number | null): string | null {
   if (m == null) return null;
   return m < 950 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 9500 ? 1 : 0)} km`;
@@ -57,7 +73,7 @@ function PlaceCardBase({
     place.rating != null
       ? `${place.rating.toFixed(1)} out of 5${place.ratingCount ? ` from ${place.ratingCount} ratings` : ''}`
       : 'no ratings yet',
-    place.googleCategory ?? meta.label,
+    categoryLabel(place),
     open === true ? 'open now' : open === false ? 'closed now' : null,
     dist ? `${dist} away` : null,
     price,
@@ -120,7 +136,7 @@ function PlaceCardBase({
               <Txt variant="caption" faint>New listing</Txt>
             )}
             <Txt variant="caption" muted numberOfLines={1} style={{ flexShrink: 1 }}>
-              {place.googleCategory ?? meta.label}
+              {categoryLabel(place)}
             </Txt>
           </View>
 
