@@ -198,12 +198,17 @@ def wait_for_network(max_wait_s: int = 6 * 3600) -> bool:
     if online():
         return True
     log("network is down — pausing sweep (batches are NOT consumed while offline)")
-    waited, delay = 0, 30
-    while waited < max_wait_s:
+    # Measure the outage against the CLOCK, not against how much sleeping we
+    # did. If the machine suspends mid-wait — a laptop lid, overnight — every
+    # time.sleep() returns the instant it wakes, so the accumulator barely
+    # moves and the log reports a 76-minute outage as "0 min". This log is the
+    # only view into an unattended multi-day sweep; it has to be true.
+    started, delay = time.monotonic(), 30
+    while time.monotonic() - started < max_wait_s:
         time.sleep(delay)
-        waited += delay
         if online():
-            log(f"network back after {waited // 60} min — resuming")
+            mins = (time.monotonic() - started) / 60
+            log(f"network back after {mins:.0f} min — resuming")
             return True
         delay = min(delay * 2, 600)
     log(f"network still down after {max_wait_s // 3600}h — giving up this cycle")
