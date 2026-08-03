@@ -26,6 +26,54 @@ ROOT = Path(__file__).parent
 APP_ASSETS = ROOT.parent / "app" / "assets" / "data"
 DEFAULT_LIMIT = 6000
 
+# The bundle is an OFFLINE SAFETY NET, not a mirror of the hot tier.
+#
+# Cached reviews were 40 MB of a 77 MB app payload — over half the download —
+# to serve a screen that shows exactly ONE review by default and clamps it to
+# two lines behind "See more". In a market where install size decides whether
+# people install at all, and mobile data is metered, that is the worst trade
+# in the project. Two reviews keep the offline detail screen honest (one to
+# show, one so "See more" isn't a lie); the cloud serves the full set, which
+# is what an online user gets anyway.
+BUNDLED_REVIEWS = 2
+REVIEW_TEXT_CHARS = 400
+
+
+def compact_attrs(raw):
+    """Emit only what the app's parseFacets() actually reads.
+
+    Google's about-blocks arrive as a JSON *string* of grouped options, and
+    the bundle stored that string verbatim: every quote escaped (roughly
+    doubling the bytes), every group id and display name carried, every
+    DISABLED option carried. parseFacets reads exactly one thing — the names
+    of enabled options — and then maps them through a ~25-entry allow-list.
+
+    So: merge to a single block, keep enabled options only, keep just the
+    name, and store real JSON rather than an escaped string. parseFacets
+    already accepts both shapes (`typeof attributes === 'string' ? JSON.parse
+    : attributes`), so this needs no app change.
+    """
+    try:
+        blocks = json.loads(raw) if isinstance(raw, str) else raw
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(blocks, list):
+        return None
+    names, seen = [], set()
+    for blk in blocks:
+        if not isinstance(blk, dict):
+            continue
+        for opt in blk.get("options") or []:
+            if not isinstance(opt, dict) or not opt.get("enabled"):
+                continue
+            nm = (opt.get("name") or "").strip()
+            if nm and nm not in seen:
+                seen.add(nm)
+                names.append(nm)
+    if not names:
+        return None
+    return [{"options": [{"name": n, "enabled": True} for n in names]}]
+
 
 def quality(r: dict) -> float:
     """Bayesian-ish prior so a 4.9 with 3 ratings loses to a 4.5 with 900."""
@@ -58,7 +106,15 @@ def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
         for r in pq.read_table(rp).to_pylist():
             if r["place_id"] in wanted:
                 try:
-                    reviews[r["place_id"]] = json.loads(r["reviews"])[:6]
+                    revs = json.loads(r["reviews"])[:BUNDLED_REVIEWS]
+                    # Long reviews are the single heaviest thing in the file
+                    # and the UI clamps to 2 lines behind a "See more" anyway.
+                    for rv in revs:
+                        if isinstance(rv, dict) and isinstance(rv.get("text"), str):
+                            rv["text"] = rv["text"][:REVIEW_TEXT_CHARS]
+                        if isinstance(rv, dict):
+                            rv.pop("images", None)   # never rendered offline
+                    reviews[r["place_id"]] = revs
                 except (json.JSONDecodeError, TypeError):
                     pass
 
@@ -107,7 +163,9 @@ def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
         if r.get("rating_histogram"):
             out["hist"] = r["rating_histogram"]
         if r.get("attributes"):
-            out["attr"] = r["attributes"]
+            compact = compact_attrs(r["attributes"])
+            if compact:
+                out["attr"] = compact
         if r.get("description"):
             out["d"] = r["description"][:280]
         # Freshness, as whole days since epoch (5 chars, not a 25-char ISO
