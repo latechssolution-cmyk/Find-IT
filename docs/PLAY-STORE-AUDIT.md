@@ -70,11 +70,31 @@ a child audience are marked ⚠️ FAMILIES.*
 
 | # | Risk | Severity |
 |---|---|---|
-| 1 | **Target API 36 deadline is 4 weeks away** (31 Aug 2026) | 🔴 BLOCKER |
-| 2 | **Under-13 declaration** pulls in Families + Child Safety Standards | 🔴 BLOCKER (if kept) |
-| 3 | **Personal account 12-tester / 14-day gate** — adds 2+ weeks | 🔴 BLOCKER (if personal) |
-| 4 | **Scraped Google data + "on Google" labelling** — IP/misrepresentation exposure | 🟠 HIGH |
-| 5 | **No crash/ANR reporting** — vitals problems land invisibly | 🟠 HIGH |
+| 1 | **Under-13 declaration** pulls in the Families policy: certified ad SDKs only, non-personalized ads, unmoderated reviews under scrutiny | 🔴 BLOCKER (if kept) |
+| 2 | **Personal account 12-tester / 14-day gate** — adds 2+ weeks. *Still unanswered* | 🔴 BLOCKER (if personal) |
+| 3 | **Redistributing Google review text** — the risk most specific to this product | 🟠 HIGH |
+| 4 | **No crash/ANR reporting** — vitals problems land invisibly | 🟠 HIGH |
+| 5 | **Never built or run as a release binary** — Hermes + R8 differ from dev | 🟠 HIGH |
+| ~~0~~ | ~~Target API 36 deadline~~ — **fixed 4 Aug**: was silently on 35, now pinned to 36 and verified | ✅ |
+
+### What changed on 3–4 Aug
+
+Closed with evidence, not assertion:
+
+- **targetSdk 35 → 36.** Expo 57 defaults to 35; this would have been
+  rejected. Pinned and verified in the generated project.
+- **Launcher icon** was Expo's default blue chevron on a leftover coral —
+  replaced with a brand mark generated from the design tokens.
+- **Feature graphic** created in the app's real typefaces.
+- **4 phone screenshots** at 1080×2340 from the running app.
+- **Privacy policy** drafted to match real behaviour; **Data Safety answers**
+  prepared to match it.
+- **Child Safety Standards** verified **not applicable** (scope is
+  Anonymous/Random Chat, Social, Dating — I had wrongly said UGC triggered it).
+- **RTL**: the one single-sided absolute position fixed to `end`.
+
+Still needs a human: audience decision, account type, contact email, policy
+hosting, ads/paid-features timing, and a Sentry DSN.
 
 ---
 
