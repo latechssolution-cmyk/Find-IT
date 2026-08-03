@@ -15,6 +15,15 @@ import type { DataSource } from './types';
 // more cities ship.
 import faisalabad from '../../assets/data/faisalabad.json';
 
+/** How long a cloud call may take before we serve the bundle instead. Tuned
+ *  against the measured spread: healthy queries land in 0.2–1.5s, and the
+ *  free tier's worst honest case was 4.5s. */
+const CLOUD_TIMEOUT_MS = 6000;
+const CLOUD_RETRY_TIMEOUT_MS = 4000;
+
+/** Sentinel so a deadline is distinguishable from a genuine failure. */
+const TIMED_OUT = Symbol('cloud-timeout');
+
 let instance: DataSource | null = null;
 let localInstance: LocalSource | null = null;
 
@@ -64,12 +73,46 @@ class ResilientSource implements DataSource {
    * the cloud holds 102,315. Retrying once costs a few hundred ms on the rare
    * failure and converts most of them into a correct answer.
    */
+  /**
+   * A cloud call must FAIL, not hang.
+   *
+   * The fallback below only runs if the cloud promise settles. Measured with
+   * the network genuinely severed, it doesn't always: the place screen sat
+   * for 9s+ with getPlace neither resolving nor rejecting, so the bundle —
+   * which had the place all along — was never consulted. A rejection would
+   * have fallen back in milliseconds.
+   *
+   * This is the normal failure mode here, not an edge case: on a saturated
+   * mobile network a request stalls far more often than it cleanly fails,
+   * and a stalled request with no deadline is indistinguishable from a
+   * hung app. Race every cloud call against a deadline so "slow" always
+   * degrades to "offline" rather than to "frozen".
+   */
+  private withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(TIMED_OUT), ms);
+      p.then(
+        (v) => { clearTimeout(t); resolve(v); },
+        (e) => { clearTimeout(t); reject(e); },
+      );
+    });
+  }
+
   private async once<T>(run: (ds: DataSource) => Promise<T>): Promise<T> {
     try {
-      return await run(this.cloud);
-    } catch {
+      return await this.withDeadline(run(this.cloud), CLOUD_TIMEOUT_MS);
+    } catch (e) {
+      // Retry an ERROR, never a TIMEOUT.
+      //
+      // A fast error is usually transient — the free tier's shared CPU drops
+      // the odd query — and a second attempt 350ms later normally succeeds.
+      // A timeout means the network is stalled, and retrying a stall just
+      // makes the user wait through the whole deadline twice: measured at
+      // 12.5s before this distinction, against ~6s after. Nobody watches a
+      // skeleton for twelve seconds; they close the app.
+      if (e === TIMED_OUT) throw e;
       await new Promise((r) => setTimeout(r, 350));
-      return run(this.cloud);
+      return this.withDeadline(run(this.cloud), CLOUD_RETRY_TIMEOUT_MS);
     }
   }
 
