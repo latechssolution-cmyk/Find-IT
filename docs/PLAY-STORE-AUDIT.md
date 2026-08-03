@@ -212,6 +212,7 @@ Genuinely strong for a pre-launch app, and worth not regressing:
 | Item | Severity |
 |---|---|
 | No crash/ANR reporting | 🔴 |
+| **Offline place detail unresolved.** `scripts/test-offline.mjs` (Playwright, genuinely severed network) shows Explore and Search working offline from the bundle, but the *detail* screen not loading. Root cause not isolated: every console error is a resource fetch failure and Metro serves modules lazily, so a dev-server artefact cannot be separated from a real bug without a production build. **Must be re-run against a release APK.** Mitigated meanwhile — the screen now explains itself and offers an exit instead of skeletoning forever | 🟠 |
 | No release-build (`eas build --profile production`) smoke test yet — Hermes + minification differ from dev | 🟠 |
 | **RTL not verified.** Urdu is RTL and you render Urdu place names today | 🟠 |
 | Process-death restoration untested (Android kills backgrounded apps aggressively on Xiaomi/Oppo, both huge in Pakistan) | 🟠 |

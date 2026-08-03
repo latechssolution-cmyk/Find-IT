@@ -51,6 +51,10 @@ import { ReportSheet } from '../ui/ReportSheet';
 /** Sliver of the next photo left visible — the swipe affordance. */
 const PHOTO_PEEK = 34;
 
+/** How long a skeleton may claim something is coming before it must explain
+ *  itself. Long enough for a slow 3G round trip plus the retry. */
+const LOAD_GRACE_MS = 9000;
+
 /** Today, so the week view can emphasise the row that matters. */
 const TODAY_KEY = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'][new Date().getDay()];
 
@@ -130,6 +134,8 @@ export default function PlaceScreen() {
   const [landmark, setLandmark] = useState<{ name: string; distanceM: number } | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** Skeletons are a promise; this is how long we let it go unkept. */
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
   const reports = useReportStore();
   const flaggedClosed = id ? reports.reportedClosed(id) : false;
 
@@ -137,16 +143,23 @@ export default function PlaceScreen() {
 
   useEffect(() => {
     if (!id) return;
+    setLoadTimedOut(false);
+    const giveUp = setTimeout(() => setLoadTimedOut(true), LOAD_GRACE_MS);
     track('place_view', { id });
     const ds = getDataSource();
+    // .catch on every one of these: an unhandled rejection here used to leave
+    // the screen skeletoning forever with nothing written anywhere.
     ds.getPlace(id).then((p) => {
+      clearTimeout(giveUp);
       setPlace(p);
+      if (!p) setLoadTimedOut(true);      // resolved, but there is no such place
       // Landmark is derived from the place's coordinates, so it chains off
       // this one fetch rather than issuing a second identical request.
-      if (p) getLocalSource().nearestLandmark(p.lat, p.lng, p.ratingCount, p.id).then(setLandmark);
-    });
-    ds.getGoogleReviews(id).then(setReviews);
-    ds.similarNearby(id, 8).then(setSimilar);
+      if (p) getLocalSource().nearestLandmark(p.lat, p.lng, p.ratingCount, p.id).then(setLandmark).catch(() => {});
+    }).catch(() => setLoadTimedOut(true));
+    ds.getGoogleReviews(id).then(setReviews).catch(() => setReviews([]));
+    ds.similarNearby(id, 8).then(setSimilar).catch(() => setSimilar([]));
+    return () => clearTimeout(giveUp);
   }, [id]);
 
   const openDirections = useCallback(() => {
@@ -190,14 +203,36 @@ export default function PlaceScreen() {
   }, [place, intents]);
 
   if (!place) {
-    return (
-      <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + space.xl, gap: space.lg }]}>
-        <Skeleton w="100%" h={220} r={0} />
-        <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
-          <Skeleton w="70%" h={24} />
-          <Skeleton w="45%" h={16} />
-          <Skeleton w="60%" h={16} />
+    /**
+     * A skeleton is a promise that something is coming. When the fetch has
+     * failed — no signal, a place that isn't in the offline slice — that
+     * promise never resolves and the user is left staring at grey bars with
+     * no way to tell whether to wait or leave. Observed offline: this screen
+     * skeletoned indefinitely.
+     *
+     * So the skeleton is time-boxed. After LOAD_GRACE_MS it becomes an
+     * answer: what happened, and the two ways out.
+     */
+    if (!loadTimedOut) {
+      return (
+        <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + space.xl, gap: space.lg }]}>
+          <Skeleton w="100%" h={220} r={0} />
+          <View style={{ paddingHorizontal: space.lg, gap: space.md }}>
+            <Skeleton w="70%" h={24} />
+            <Skeleton w="45%" h={16} />
+            <Skeleton w="60%" h={16} />
+          </View>
         </View>
+      );
+    }
+    return (
+      <View style={[styles.root, { backgroundColor: c.bg, paddingTop: insets.top + space.xl }]}>
+        <EmptyState
+          icon="wifi-off"
+          title="Couldn't load this place"
+          body="You may be offline, or this place isn't in the offline copy of your city. Your saved places still work."
+          action={<Button label="Back to Explore" variant="tonal" onPress={goBack} />}
+        />
       </View>
     );
   }
