@@ -181,6 +181,48 @@ export function expand(q: string): string[] {
   return [...out];
 }
 
+/**
+ * Query completions — "bir" → "biryani".
+ *
+ * Distinct from place suggestions, which answer "did you mean THIS shop?".
+ * These answer "did you mean this KIND of thing?", and they matter more here
+ * than in a Western app: typing Roman-Urdu on a phone keyboard is slow and
+ * error-prone, so every character we save is real. Prefix matches first
+ * (they're what the user is mid-way through typing), then typo repairs.
+ */
+const COMPLETION_VOCAB: string[] = Array.from(new Set([
+  // what people actually search for, most-wanted first
+  'biryani', 'karahi', 'chai', 'nihari', 'haleem', 'pizza', 'burger',
+  'ice cream', 'bakery', 'sweets', 'juice', 'breakfast', 'bbq', 'tikka',
+  'pharmacy', 'clinic', 'doctor', 'dentist', 'hospital', 'lab',
+  'salon', 'barber', 'parlour', 'spa', 'gym',
+  'grocery', 'kiryana', 'mart', 'bakery', 'mobile shop', 'clothing',
+  'shoes', 'furniture', 'hardware', 'stationery', 'book shop',
+  'school', 'academy', 'college', 'tuition', 'library',
+  'bank', 'atm', 'petrol pump', 'cng', 'mechanic', 'car wash', 'workshop',
+  'tailor', 'darzi', 'laundry', 'printing', 'photocopy', 'photographer',
+  'hotel', 'guest house', 'marquee', 'marriage hall', 'park', 'cinema',
+  'courier', 'mosque', 'vet', 'nursery', 'optician', 'jeweller',
+  ...Object.keys(SYNONYMS),
+]));
+
+export function completeTerm(raw: string, limit = 4): string[] {
+  const q = norm(urduToLatin(raw));
+  if (q.length < 2) return [];
+  const starts: string[] = [];
+  const contains: string[] = [];
+  const typos: string[] = [];
+  for (const w of COMPLETION_VOCAB) {
+    if (w === q) continue;                       // already typed it exactly
+    if (w.startsWith(q)) starts.push(w);
+    else if (q.length >= 3 && w.includes(q)) contains.push(w);
+    else if (q.length >= 4 && isTypoOf(w, q)) typos.push(w);
+  }
+  const byLength = (a: string, b: string) => a.length - b.length;
+  return [...starts.sort(byLength), ...contains.sort(byLength), ...typos]
+    .slice(0, limit);
+}
+
 export function guessCategory(q: string): CategoryBucket | null {
   for (const tok of norm(q).split(' ')) {
     const direct = CATEGORY_WORDS[tok];

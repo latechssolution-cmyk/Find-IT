@@ -17,7 +17,8 @@ import { enter } from '../ui/enter';
 
 import { colors, curve, radius, space, categoryMeta } from '../theme';
 import {
-  getDataSource, guessCategory, type CategoryBucket, type Place, type SearchResult, type Suggestion,
+  completeTerm, getDataSource, guessCategory,
+  type CategoryBucket, type Place, type SearchResult, type Suggestion,
 } from '../data';
 import { PlaceCard, formatDistance } from '../ui/PlaceCard';
 import { Icon, categoryIcon } from '../ui/Icon';
@@ -61,6 +62,10 @@ export default function SearchScreen() {
    *  debounce fires AFTER run() clears it and buries the results under
    *  autocomplete for the query the user already submitted. */
   const submitted = useRef<string | null>(null);
+
+  /** Query completions ("bir" → "biryani") — local, instant, no round trip.
+   *  Hidden once the term has been submitted, same rule as suggestions. */
+  const terms = (q.trim().length >= 2 && q !== submitted.current) ? completeTerm(q) : [];
 
   useEffect(() => { getRecents().then(setRecents); }, []);
 
@@ -133,11 +138,35 @@ export default function SearchScreen() {
       {/* ------------------------------------------------------------ content */}
       {busy ? (
         <View>{[0, 1, 2, 3].map((i) => <PlaceCardSkeleton key={i} />)}</View>
-      ) : sugs.length > 0 ? (
+      ) : (sugs.length > 0 || terms.length > 0) ? (
         <FlashList
           data={sugs}
           keyExtractor={(s) => s.id}
           keyboardShouldPersistTaps="handled"
+          /* Term completions sit ABOVE place hits: "did you mean this KIND
+             of thing?" outranks "did you mean this shop?" while the query
+             is still short, and each row saves a fistful of keystrokes. */
+          ListHeaderComponent={
+            terms.length ? (
+              <View>
+                {terms.map((t) => (
+                  <Tap
+                    key={t}
+                    onPress={() => { setQ(t); run(t); }}
+                    haptic="light"
+                    scaleTo={0.99}
+                    style={[styles.sugRow, { borderBottomColor: c.border }]}
+                  >
+                    <View style={[styles.sugIcon, curve, { backgroundColor: c.surfaceAlt }]}>
+                      <Icon name="search" size={14} color={c.textMuted} muted />
+                    </View>
+                    <Txt variant="body" style={{ flex: 1 }} numberOfLines={1}>{t}</Txt>
+                    <Icon name="arrow-up-left" size={15} color={c.textFaint} muted />
+                  </Tap>
+                ))}
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => (
             <Tap onPress={() => openPlace(item.id)} haptic="light" scaleTo={0.99} style={[styles.sugRow, { borderBottomColor: c.border }]}>
               <View style={[styles.sugIcon, curve, { backgroundColor: c.surfaceAlt }]}>
