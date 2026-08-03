@@ -14,6 +14,7 @@ import type {
   DataSource, GoogleReview, Place, SearchArgs, SearchResult, Suggestion,
 } from './types';
 import { DEFAULT_RADIUS_M, RADIUS_STEPS } from './search';
+import { extractNeeds } from './facets';
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -70,8 +71,21 @@ export class SupabaseSource implements DataSource {
   async ready() {}
 
   async search(args: SearchArgs): Promise<SearchResult> {
+    // Same query-intent rule as the local source: "halal biryani" filters
+    // halal and searches biryani, relaxing to plain text if that empties.
+    const rawQ = (args.q ?? '').trim();
+    if (rawQ) {
+      const ex = extractNeeds(rawQ);
+      if (ex.facets.length) {
+        const strict = await this.search({
+          ...args, q: ex.q || null, facets: [...(args.facets ?? []), ...ex.facets],
+        });
+        if (strict.places.length) return strict;
+      }
+    }
+
     const { data, error } = await this.client.rpc('search_places', {
-      q: args.q ?? null,
+      q: rawQ || null,
       lat: args.lat ?? null,
       lng: args.lng ?? null,
       radius_m: args.radiusM ?? DEFAULT_RADIUS_M,
@@ -80,6 +94,7 @@ export class SupabaseSource implements DataSource {
       min_rating: args.minRating ?? null,
       lim: args.limit ?? 40,
       off: args.offset ?? 0,
+      needs: args.facets?.length ? args.facets : null,
     });
     if (error) throw error;
     const places = (data ?? []).map(fromRow);
@@ -134,9 +149,11 @@ export class SupabaseSource implements DataSource {
   }
 
   async getPlace(id: string): Promise<Place | null> {
+    // lat/lng are PostgREST computed columns (see search.sql) — the geography
+    // point itself isn't selectable as numbers.
     const { data, error } = await this.client
       .from('place')
-      .select('*, lat_out:st_y(location::geometry), lng_out:st_x(location::geometry)')
+      .select('*,lat,lng')
       .eq('id', id)
       .maybeSingle();
     if (error) throw error;

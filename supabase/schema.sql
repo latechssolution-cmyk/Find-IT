@@ -7,6 +7,23 @@ create extension if not exists unaccent;
 create extension if not exists postgis;
 create extension if not exists fuzzystrmatch;   -- levenshtein: transposition typos
 
+-- unaccent() is only STABLE (the dictionary is resolved at call time), which
+-- disqualifies it from generated columns and expression indexes. Pinning the
+-- dictionary and declaring IMMUTABLE is the accepted workaround — safe unless
+-- the unaccent rules file itself is edited, which we never do.
+create or replace function immutable_unaccent(text)
+returns text
+language sql immutable parallel safe strict
+return public.unaccent('public.unaccent'::regdictionary, $1);
+
+-- array_to_string(anyarray, text) is likewise only STABLE (element output
+-- casts could in theory vary); for text[] joined for a tsvector it is
+-- deterministic, so the same pin-and-declare trick applies.
+create or replace function immutable_join(text[])
+returns text
+language sql immutable parallel safe strict
+return array_to_string($1, ' ');
+
 -- ---------------------------------------------------------------- categories
 create table if not exists category (
   id          smallint primary key,
@@ -39,7 +56,7 @@ create table if not exists place (
   google_cid        text,
 
   name              text not null,
-  name_norm         text generated always as (lower(unaccent(name))) stored,
+  name_norm         text generated always as (lower(immutable_unaccent(name))) stored,
   category_bucket   text,
   categories_raw    text[] default '{}',
   google_category   text,
@@ -90,11 +107,11 @@ create table if not exists place (
 
   search_tsv        tsvector generated always as (
                       to_tsvector('simple',
-                        unaccent(coalesce(name, '')) || ' ' ||
-                        unaccent(coalesce(category_bucket, '')) || ' ' ||
-                        unaccent(coalesce(google_category, '')) || ' ' ||
-                        unaccent(coalesce(array_to_string(categories_raw, ' '), '')) || ' ' ||
-                        unaccent(coalesce(locality, ''))
+                        immutable_unaccent(coalesce(name, '')) || ' ' ||
+                        immutable_unaccent(coalesce(category_bucket, '')) || ' ' ||
+                        immutable_unaccent(coalesce(google_category, '')) || ' ' ||
+                        immutable_unaccent(coalesce(immutable_join(categories_raw), '')) || ' ' ||
+                        immutable_unaccent(coalesce(locality, ''))
                       )
                     ) stored
 );

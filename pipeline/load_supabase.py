@@ -120,7 +120,11 @@ def main(slug: str, schema_only: bool = False) -> None:
     if not src.exists():
         sys.exit(f"no parquet for '{slug}' — run: python run_city.py {slug}")
 
-    with psycopg.connect(dsn) as conn:
+    # prepare_threshold=None: the Supavisor transaction pooler (port 6543 —
+    # the only route from IPv4-only networks) hops backends between
+    # transactions, so psycopg's auto-prepared statements collide with
+    # themselves ("prepared statement _pg3_0 already exists").
+    with psycopg.connect(dsn, prepare_threshold=None) as conn:
         for f in ("schema.sql", "search.sql"):
             print(f"applying {f}...")
             conn.execute((SQL_DIR / f).read_text(encoding="utf-8"))
