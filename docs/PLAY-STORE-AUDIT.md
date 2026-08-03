@@ -84,8 +84,8 @@ a child audience are marked ⚠️ FAMILIES.*
 | **Target API 36 (Android 16) for new apps from 31 Aug 2026** | Yes | ✅ **FIXED 4 Aug** | Expo SDK 57 defaulted to **35**, not 36 — confirmed by reading `ExpoRootProjectPlugin.kt` (`getVersionOrDefault("targetSdk", "35")`) and by generating the native project, which carried no version catalog to override it. This app **would have been rejected**. Pinned via `expo-build-properties`; `expo prebuild` now emits `android.targetSdkVersion=36` | [Target API levels](https://support.google.com/googleplay/android-developer/answer/11926878) |
 | **App Bundle (.aab), 64-bit, Play App Signing** | Yes | ✅ likely pass | `eas build --platform android` produces a compliant AAB by default. Verify 64-bit libs present | [Play Console](https://support.google.com/googleplay/android-developer/answer/9859152) |
 | **16 KB page size compatibility** | Yes | ⚠️ UNVERIFIED | RN 0.86 + Expo 57 native libs should be compliant; verify with the Play Console pre-launch report | [Android docs](https://developer.android.com/guide/practices/page-sizes) |
-| **Privacy policy, publicly hosted** | Yes | ❌ FAIL | None exists. Must cover: location use, review content, analytics, Supabase as processor, deletion route. Host at a stable URL | [User Data policy](https://support.google.com/googleplay/android-developer/answer/10144311) |
-| **Data safety form** | Yes | ❌ FAIL | Declare: approximate + precise location (app functionality, not shared), user-generated content (reviews), device identifiers if any analytics added. You currently ship **no third-party SDK that collects data** — that is a genuine advantage, keep it true | [Data safety](https://support.google.com/googleplay/android-developer/answer/10787469) |
+| **Privacy policy, publicly hosted** | Yes | 🟡 **DRAFTED 4 Aug** | [docs/PRIVACY.md](PRIVACY.md) written to match actual behaviour. **Two things remain:** a monitored contact email, and hosting it at a stable public URL (GitHub Pages is fine and free). Needs a lawyer's read before publication | [User Data policy](https://support.google.com/googleplay/android-developer/answer/10144311) |
+| **Data safety form** | Yes | 🟡 **ANSWERS PREPARED** | See the table below. Must match the privacy policy exactly — divergence between the two is a documented suspension cause | [Data safety](https://support.google.com/googleplay/android-developer/answer/10787469) |
 | **Account deletion (in-app + web URL)** | Only if accounts | ⚪ N/A today | You have no accounts. If you enable Supabase anonymous auth for review sync, this becomes mandatory: an in-app delete path **and** a publicly reachable web form | [Deletion policy](https://support.google.com/googleplay/android-developer/answer/13327111) |
 | **Foreground location** | Yes | ✅ pass | Coarse + fine only, background explicitly blocked in `app.json`. No declaration form needed. Keep the prominent-disclosure primer you already have in onboarding | [Location permissions](https://support.google.com/googleplay/android-developer/answer/9799150) |
 | **Background location declaration** | No | ⚪ N/A | `ACCESS_BACKGROUND_LOCATION` is in `blockedPermissions`. This avoids the hardest permission review on Play — do not regress it | — |
@@ -95,6 +95,33 @@ a child audience are marked ⚠️ FAMILIES.*
 | **Play Billing for digital goods** | Only if paid features | ⚪ N/A today | If you sell in-app (e.g. business listings upgrades), Play Billing is mandatory for *digital* goods. Selling **physical** services or ads to businesses is out of scope for Billing | [Payments](https://support.google.com/googleplay/android-developer/answer/9858738) |
 | **12 testers × 14 days closed testing** | If personal account created after 13 Nov 2023 | ⚠️ UNKNOWN | You didn't specify account type. If personal-new: recruit 12 real testers, keep them opted in 14 continuous days, then apply for production | [Testing requirements](https://support.google.com/googleplay/android-developer/answer/14151465) |
 | **GDPR / UK GDPR** | Only if EU/UK launch | ⚪ likely N/A | Pakistan-only launch avoids this entirely. Worldwide launch adds lawful basis, consent for analytics, DSA trader declaration | — |
+
+## Data Safety form — the exact answers
+
+Prepared against the build of 4 Aug 2026. **Re-check before every submission**
+— these change the moment auth, analytics or ads land.
+
+| Question | Answer | Why |
+|---|---|---|
+| Does your app collect or share any of the required user data types? | **Yes** | Location is transmitted to answer a search |
+| Location → Approximate location | **Collected, not shared.** Purpose: App functionality. Not required (optional) | Sent with the search request; the app works without it via manual picking |
+| Location → Precise location | **Collected, not shared.** Purpose: App functionality. Not required | Same |
+| Is location data processed ephemerally? | **Yes** | Coordinates answer the request; they are not written to the database or retained as records |
+| Personal info (name, email, address, phone) | **Not collected** | No accounts exist |
+| Financial info | **Not collected** | No payments |
+| Messages, contacts, calendar, photos, files | **Not collected** | Permissions never requested |
+| App activity → Other user-generated content | **Not collected** *(today)* | Reviews and reports are written to device storage only and never transmitted — this flips to **Collected** the moment anonymous auth is enabled |
+| App activity → App interactions | **Not collected** *(today)* | Usage events are local-only, capped at 500, and never transmitted |
+| Device or other IDs | **Not collected** | No advertising ID, no analytics SDK |
+| Is all data encrypted in transit? | **Yes** | HTTPS throughout |
+| Can users request data deletion? | **N/A today** — no server-side user data exists | Becomes **mandatory** (in-app + web form) the moment auth is enabled |
+
+**The honest headline:** this app currently has an unusually clean data
+posture — no accounts, no ad SDK, no analytics SDK, no advertising ID,
+foreground location only, background location blocked at the manifest. That is
+a real competitive and review advantage. Every item in *Things that would
+change this policy* erodes it, so treat each as a deliberate trade rather than
+an incremental addition.
 
 ---
 
@@ -206,8 +233,9 @@ then 100% over ~5 days if vitals hold.
 - [ ] Audience decision (13+ strongly recommended)
 - [x] ~~`targetSdkVersion 36`~~ — pinned and verified in the generated
       project on 4 Aug. Re-confirm once in the Play Console on first upload
-- [ ] Privacy policy written and hosted
-- [ ] Data Safety form completed
+- [ ] Privacy policy — **drafted** ([docs/PRIVACY.md](PRIVACY.md)); still
+      needs a contact email, public hosting, and a legal read
+- [ ] Data Safety form — **answers prepared** above; needs entering in Console
 - [ ] IARC content rating completed
 - [ ] Developer account created; 12-tester clock started if personal
 - [ ] Google review-text redistribution resolved
