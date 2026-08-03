@@ -97,10 +97,17 @@ data never had (~60% of results, in practice).
 - **Two review shelves, never blended.** FIND IT's own reviews and Google's sit
   side by side, each labelled, each with its own rating. The Google cache is
   bounded (~10/place) and *replaced* on refresh, so deletions self-correct.
-- **Ranking is one formula, in two places.** `search_places()` in SQL and
-  `scorePlace()` in TypeScript use identical weights: relevance, a Bayesian
-  quality prior, proximity decay, open-now. A 4.9★ with 3 ratings must not
-  outrank a 4.6★ with 800 — there's a test for it.
+- **Ranking is one formula, in two places — with one caveat.** `search_places()`
+  in SQL and `scorePlace()` in TypeScript use **identical weights**: relevance
+  0.40, Bayesian quality prior 0.25, proximity decay 0.20 (same 1.6 constant),
+  open-now 0.10, rating volume 0.05, and the same prior
+  `(n·r + 20·3.9)/(n+20)/5`. A 4.9★ with 3 ratings must not outrank a 4.6★
+  with 800 — there's a test for it.
+  **The relevance term itself is computed differently**, though: TypeScript
+  uses tiered exact/prefix/word matching (1.0 / 0.95 / 0.85 / 0.8), SQL uses
+  `greatest(similarity(), ts_rank())`. Identical inputs can therefore order
+  slightly differently online vs offline. Both are defensible; they are not
+  the same function, and the weight parity does not imply result parity.
 - **Typo tolerance needs both measures.** Trigrams catch insertions and
   deletions; edit distance catches transpositions ("birayni" → "biryani",
   which scores only 0.33 on trigrams). Both paths implement both.

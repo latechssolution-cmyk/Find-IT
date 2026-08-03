@@ -284,7 +284,12 @@ Business owners: if a listing is wrong, tap "Suggest an edit" in the app.
 - [x] Icon 512×512 — generated, `scripts/make-icons.py`
 - [x] Feature graphic 1024×500 — generated, `scripts/make-feature-graphic.py`,
       set in the app's real typefaces so listing and product match
-- [ ] Phone screenshots ×4 minimum: Explore, a place, search, saved
+- [x] Phone screenshots ×4 at **1080×2340** — `app/store-assets/`, generated
+      by `scripts/capture-screenshots.mjs` (Playwright drives the real app at
+      540×1170 CSS × DPR 2, so type is true retina rather than upscaled).
+      **Caveat:** rendered through react-native-web, so map tiles and Urdu
+      font fallback may differ slightly from a native build — re-shoot on a
+      device before final submission if anything looks off
 - [ ] 7-inch and 10-inch tablet screenshots if declaring tablet support
       (`supportsTablet: true` is set for iOS; decide for Android)
 
