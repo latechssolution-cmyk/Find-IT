@@ -20,7 +20,8 @@ find-it/
 | Scraped | Faisalabad **done** (14,809 · 6,854 discovered) · Islamabad/Rawalpindi **done** (40,775 · 10,631 discovered) · Lahore in progress · 11 cities queued |
 | App bundles | 3 cities × 6,000 places; home city eager, others lazy-load by proximity |
 | App | 7 screens, typechecks clean, bundles for Android, 17/17 data checks pass |
-| Backend | Schema + search SQL written; deploy = [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md) (~10 min + keys) |
+| Backend | **Live** — Supabase `ap-south-1` (Mumbai, 68 ms from Pakistan vs 107 ms Singapore): 102,315 places, 25,650 with cached Google reviews |
+| App payload | 36.5 MB of city data → 39.9 MB Android bundle (was 77 MB / 47 MB) |
 
 ### Screens
 
@@ -111,13 +112,47 @@ data never had (~60% of results, in practice).
   needs too ("halal biryani" filters halal, searches biryani).
 - **Scraped photo URLs are signed.** `gps-cs-s` links 404 if the size
   directive is touched — serve exactly what was scraped. And `google_status`
-  from the scraper is misaligned junk; the closed signal is user reports.
+  from the scraper is misaligned junk ('Diesel gas', 'Brunch', 'PKR 5,000'
+  across 102k rows); `state` is provenance, not status. **User reports are
+  the only closure signal**, which is why reporting is one tap.
+- **The bundle is a safety net, not a mirror.** It ships 6,000 quality-ranked
+  places per city with 2 reviews and 2 photo URLs each — deliberately not the
+  full hot tier. Cached reviews alone were 40 MB of a 77 MB payload for a
+  screen that shows ONE review by default, and bundled photo URLs are remote
+  fetches that resolve to nothing when the user is actually offline.
+- **Graceful fallback hides outages — verify against the DB, not the screen.**
+  `ResilientSource` degrades to the bundle so silently that three separate
+  bugs looked like a working app: the radius picker counting the bundle while
+  Explore searched the cloud (548 shown vs 12,180 actual in Lahore),
+  landmarks never resolving for cloud places because lookup was by bundled
+  id, and transient timeouts dropping users to bundle data. Anything claiming
+  a count or a match is checked against `count_in_radii` / the DB directly.
+- **The free tier's CPU is the latency, not the SQL.** Identical queries range
+  0.23s–4.53s with statistics current and plans sound; past PostgREST's
+  statement timeout the call simply fails. Hence one retry before falling
+  back, and `ANALYZE` at the end of every bulk load — 46k rows land in
+  minutes, autovacuum needs far longer, and stale stats caused a real search
+  outage while the same query ran in 197 ms directly.
+- **Nothing renders in a font we don't control.** A bare `★` in a `Text` run
+  has no font family and falls through to the system face (22 of ~200 nodes);
+  `⯨` is missing from most Android fonts and draws as tofu. Stars are icon
+  glyphs. Scraped names get PUA codepoints stripped (U+F8FF is the Apple
+  logo, tofu everywhere but Apple) — emoji are kept, they're merchant
+  branding and render natively.
 
 ## Verification
 
 ```bash
 cd app
 npx tsc --noEmit                 # types
-node scripts/verify-search.mjs   # search + data quality against the real bundle
-npx expo export --platform android   # proves the whole thing bundles
+node scripts/verify-search.mjs   # 19 checks: typos, vocabulary, ranking, richness
+npx expo export --platform android   # proves it bundles, and prints the real size
+```
+
+The cloud tier has its own two:
+
+```bash
+cd pipeline
+python db_status.py     # live inventory per city — places, rated, with-reviews
+python analyze_now.py   # refresh planner stats (load_supabase.py does this too)
 ```
