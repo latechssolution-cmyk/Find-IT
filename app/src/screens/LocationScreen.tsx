@@ -21,7 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors, curve, motion, radius as R, shadow, space } from '../theme';
-import { getLocalSource, RADIUS_STEPS } from '../data';
+import { getDataSource, RADIUS_STEPS } from '../data';
 import { Map, type MapHandle } from '../ui/Map';
 import { MapBoundary } from '../ui/MapBoundary';
 import { Icon } from '../ui/Icon';
@@ -58,6 +58,8 @@ export default function LocationScreen() {
   const lift = useSharedValue(0);
   const geoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Guards against an out-of-order reply overwriting a newer drag's count. */
+  const countSeq = useRef(0);
 
   const pinStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: -lift.value }, { scale: 1 + lift.value / 100 }],
@@ -95,9 +97,23 @@ export default function LocationScreen() {
     // on first touch, and a stale count that flips later reads as a glitch.
     setCount(null);
     countTimer.current = setTimeout(async () => {
-      const n = await getLocalSource().countWithin(center.lat, center.lng, radiusM);
-      setCount(n);
-    }, 200);
+      // Count through the SAME source Explore searches. This used to call
+      // getLocalSource() for instant feedback, which quietly broke the one
+      // promise this control makes — the count shown is the count delivered.
+      // The bundle is a 6,000-place quality slice; the cloud holds 46,351 for
+      // Lahore alone, so the picker was advertising 548 places within 5 km
+      // where Explore would then find thousands. ResilientSource still falls
+      // back to the bundle if the cloud is unreachable, so the offline path
+      // is unchanged — it is just no longer the DEFAULT answer when we can do
+      // better. 300 ms rather than 200 since this can now be a round trip.
+      const seq = ++countSeq.current;
+      const n = await getDataSource()
+        .countInRadii({ lat: center.lat, lng: center.lng, radiusM }, [radiusM])
+        .then((rows) => rows.find((r) => r.radiusM === radiusM)?.count ?? 0)
+        .catch(() => null);
+      // Ignore a slow reply that lost the race to a newer drag.
+      if (seq === countSeq.current) setCount(n);
+    }, 300);
     return () => { if (countTimer.current) clearTimeout(countTimer.current); };
   }, [center.lat, center.lng, radiusM]);
 
