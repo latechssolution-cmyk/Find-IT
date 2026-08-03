@@ -18,6 +18,11 @@ export interface Coords { lat: number; lng: number }
 export const FAISALABAD: Coords = { lat: 31.418, lng: 73.079 };
 export const DEFAULT_RADIUS_M = 5000;
 
+/** How long to wait for a GPS fix before carrying on without one. Long
+ *  enough for a warm fix outdoors, short enough that a cold indoor start
+ *  doesn't strand the user on the onboarding button. */
+const GPS_TIMEOUT_MS = 8000;
+
 interface LocState {
   coords: Coords | null;
   label: string | null;
@@ -49,14 +54,23 @@ export const useLocationStore = create<LocState>((set, get) => ({
     }
     set({ permission: 'granted' });
     try {
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      // Raced against a deadline, because the catch below only fires on a
+      // REJECTION and a GPS fix does not always reject — indoors, or on a
+      // low-end Android with a cold almanac, getCurrentPositionAsync can
+      // simply never return. This function is awaited by the onboarding
+      // button, so a hang is not a slow fix: it is a dead "Enable location"
+      // that never advances, on the first screen of the app.
+      const pos = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('gps timeout')), GPS_TIMEOUT_MS)),
+      ]);
       const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       set({ coords: c, manual: false });
-      reverseGeocode(c).then((l) => l && set({ label: l }));
+      reverseGeocode(c).then((l) => l && set({ label: l })).catch(() => {});
     } catch {
-      /* keep the fallback centre; never block the UI on a GPS timeout */
+      /* keep the fallback centre — permission was still granted, so the
+         answer to the caller is yes; we just don't have a fix yet */
     }
     return true;
   },
