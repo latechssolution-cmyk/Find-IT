@@ -127,12 +127,16 @@ data never had (~60% of results, in practice).
   landmarks never resolving for cloud places because lookup was by bundled
   id, and transient timeouts dropping users to bundle data. Anything claiming
   a count or a match is checked against `count_in_radii` / the DB directly.
-- **The free tier's CPU is the latency, not the SQL.** Identical queries range
-  0.23s–4.53s with statistics current and plans sound; past PostgREST's
-  statement timeout the call simply fails. Hence one retry before falling
-  back, and `ANALYZE` at the end of every bulk load — 46k rows land in
-  minutes, autovacuum needs far longer, and stale stats caused a real search
-  outage while the same query ran in 197 ms directly.
+- **The free tier's CPU is the latency, not the SQL.** The *same* query varies
+  3–10× run to run (`biryani` measured at 0.30s, 2.08s and 2.94s within
+  minutes), and when it drifts past PostgREST's statement timeout the call
+  fails outright. Ruled out, with evidence: stale statistics (`ANALYZE` runs
+  after every load and timeouts still recur), table bloat (`n_dead_tup = 0`),
+  and the query shape itself — every individual predicate is 0.12–0.45s, and
+  rewriting the OR-filter as a UNION *helped* one query 3.6× while *hurting*
+  another 3.5×, so it was not adopted. The app-side answer is the only
+  reliable one: retry once, then serve the bundle. `ANALYZE` after bulk loads
+  stays as hygiene, not as a fix.
 - **Nothing renders in a font we don't control.** A bare `★` in a `Text` run
   has no font family and falls through to the system face (22 of ~200 nodes);
   `⯨` is missing from most Android fonts and draws as tofu. Stars are icon

@@ -168,13 +168,13 @@ def main(slug: str, schema_only: bool = False) -> None:
             (city_id, city_id))
         conn.commit()
 
-        # ANALYZE, always. A bulk load moves tens of thousands of rows in
-        # minutes; autovacuum takes far longer to notice, and until it does
-        # the planner works from statistics describing a much smaller table.
-        # Observed right after loading Lahore: search_places('biryani') blew
-        # through PostgREST's statement timeout from the app while the same
-        # query ran in 197 ms directly — a user-facing search outage caused
-        # purely by stale stats. It costs seconds here, so it is not optional.
+        # ANALYZE as hygiene, not as a cure. A bulk load moves tens of
+        # thousands of rows in minutes and autovacuum takes far longer to
+        # notice, so refreshing statistics here is plainly right and costs
+        # ~10s. It is NOT what fixes the post-load search timeouts, though:
+        # those recur with statistics current and n_dead_tup at 0, because
+        # the same query varies 3-10x run to run on the free tier's shared
+        # CPU. The durable answer lives in the app (retry, then bundle).
         print("analyzing (planner stats after bulk load)...")
         conn.execute("ANALYZE place")
         conn.execute("ANALYZE google_review_cache")
