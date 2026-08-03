@@ -40,6 +40,11 @@ CATEGORIES = [c.strip() for c in (HERE / "categories.txt").read_text(encoding="u
 GRID_KM = 4.0
 ZOOM = 14
 CONCURRENCY = 4
+# Checked, not guessed: depth 2 is NOT the binding constraint. Across the 64
+# sub-queries in a dense Lahore batch the best returned 32 results and the
+# median returned 10, so searches exhaust their own results well before the
+# depth limit. Raising it would buy time and no data — the 4 km grid is what
+# actually delivers coverage in dense areas, not deeper scrolling.
 DEPTH = 2
 CATS_PER_BATCH = 4
 # Backstop against a WEDGED process, not a budget for a productive one.
