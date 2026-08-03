@@ -98,7 +98,14 @@ export default function SearchScreen() {
       // Result count and query length only — query text is user content.
       track(res.places.length ? 'search_run' : 'search_zero',
         { len: query.length, n: res.places.length });
-      if (query) { await addRecent(query); getRecents().then(setRecents); }
+      // Only remember searches that FOUND something. A recent chip is a
+      // one-tap suggestion, and re-offering a query we already know returns
+      // nothing is a guaranteed dead end — the exact thing the rescue ladder
+      // exists to prevent.
+      if (query && res.places.length) {
+        await addRecent(query);
+        getRecents().then(setRecents);
+      }
     } finally {
       setBusy(false);
     }
