@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -135,6 +136,17 @@ def main() -> None:
         con.close()
         tmp.replace(CACHE)
         log(f"HARVEST COMPLETE: {n:,} Pakistan places -> {CACHE}")
+
+    if "--no-rebuild" in sys.argv:
+        # Harvest only. run_city.main() REWRITES canonical.parquet, and the
+        # sweep's ingest reads that same file every ten batches — rebuilding a
+        # city mid-sweep races a live reader against a partial write. With
+        # this flag the download can run alongside the sweep, and the folds
+        # happen later at a quiet moment:
+        #     python fsq_pk_harvest.py            (rebuilds everything)
+        #     python run_city.py <slug>           (one city, when it is idle)
+        log("harvest complete; skipping city rebuilds (--no-rebuild)")
+        return
 
     import run_city
     for slug in CITIES_TO_REBUILD:
