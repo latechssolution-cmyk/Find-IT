@@ -213,7 +213,12 @@ export default function ExploreScreen() {
           >
             <Icon name="map-pin" size={12} color={c.accentText} />
             <Txt variant="caption" numberOfLines={1}>
-              {label ?? 'Faisalabad'} · {(radiusM / 1000).toFixed(0)} km
+              {/* "Search this area" clears the label and reverse-geocodes,
+                  so there is a window where we do not know where the user
+                  is. Falling back to a hard-coded city NAMED a place they
+                  may be nowhere near; "This area" is true whatever the
+                  coordinates. */}
+              {label ?? 'This area'} · {(radiusM / 1000).toFixed(0)} km
             </Txt>
           </Tap>
 
