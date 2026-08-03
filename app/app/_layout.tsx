@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,20 @@ import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif'
 
 import { colors } from '../src/theme';
 import { useScheme, useThemeBootstrap } from '../src/ui/useScheme';
+import { ScreenError } from '../src/ui/ScreenError';
+
+/**
+ * Expo Router renders this instead of the tree when any screen throws.
+ * Without it a crash is a blank view in production — a dead end, and a dead
+ * end here means the user goes back to Google Maps.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <SafeAreaProvider>
+      <ScreenError error={error} retry={retry} />
+    </SafeAreaProvider>
+  );
+}
 
 export default function RootLayout() {
   // Load the saved light/dark preference before first paint, so the app never
