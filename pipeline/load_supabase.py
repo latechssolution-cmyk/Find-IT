@@ -167,6 +167,19 @@ def main(slug: str, schema_only: bool = False) -> None:
             "UPDATE city SET place_count = (SELECT count(*) FROM place WHERE city_id = %s) WHERE id = %s",
             (city_id, city_id))
         conn.commit()
+
+        # ANALYZE, always. A bulk load moves tens of thousands of rows in
+        # minutes; autovacuum takes far longer to notice, and until it does
+        # the planner works from statistics describing a much smaller table.
+        # Observed right after loading Lahore: search_places('biryani') blew
+        # through PostgREST's statement timeout from the app while the same
+        # query ran in 197 ms directly — a user-facing search outage caused
+        # purely by stale stats. It costs seconds here, so it is not optional.
+        print("analyzing (planner stats after bulk load)...")
+        conn.execute("ANALYZE place")
+        conn.execute("ANALYZE google_review_cache")
+        conn.commit()
+
         n = conn.execute("SELECT count(*) FROM place WHERE city_id = %s", (city_id,)).fetchone()[0]
     print(f"done — {n:,} places live in Supabase for '{slug}'")
 

@@ -163,7 +163,13 @@ language sql stable as $$
            needs <@ (p.facet_keys ||
                      case when p.cards_ok then array['cards']
                           else array[]::text[] end))
-      and coalesce(p.google_status, '') not ilike '%permanently closed%'
+      -- NO google_status filter. The scraper misaligns that column: across
+      -- 102k rows it holds 'Diesel gas', 'Brunch', 'PKR 5,000' — never a
+      -- status. The old `not ilike '%permanently closed%'` guard therefore
+      -- hid exactly 0 rows while costing an ILIKE on every row the geo index
+      -- returned (18,823 for one Lahore search), and it was a landmine: the
+      -- day that column fills with different garbage it would start hiding
+      -- real businesses. Closure signal comes from user reports and `state`.
       and (
         pr.raw_q is null
         or p.name_norm % pr.nq                              -- trigram (typos)
