@@ -127,6 +127,15 @@ data never had (~60% of results, in practice).
   full hot tier. Cached reviews alone were 40 MB of a 77 MB payload for a
   screen that shows ONE review by default, and bundled photo URLs are remote
   fetches that resolve to nothing when the user is actually offline.
+- **A `catch` is not a timeout.** On a saturated mobile network the common
+  failure is not an error — it is *nothing at all*, forever. Three separate
+  places here assumed failure means rejection and so never fired: the cloud
+  fallback (`ResilientSource` degrades in a `.catch` a hang never reaches),
+  the GPS fix (whose comment literally claimed it could not block the UI, on
+  the code path the onboarding button awaits), and the place screen's
+  skeleton. Every await that can touch a network or a radio now races a
+  deadline. `scripts/test-hanging-cloud.mjs` covers the case the offline test
+  cannot: requests accepted and never answered, rather than severed.
 - **Graceful fallback hides outages — verify against the DB, not the screen.**
   `ResilientSource` degrades to the bundle so silently that three separate
   bugs looked like a working app: the radius picker counting the bundle while
@@ -155,9 +164,20 @@ data never had (~60% of results, in practice).
 
 ```bash
 cd app
-npx tsc --noEmit                 # types
-node scripts/verify-search.mjs   # 19 checks: typos, vocabulary, ranking, richness
-npx expo export --platform android   # proves it bundles, and prints the real size
+npx tsc --noEmit                    # types
+node scripts/verify-search.mjs      # 19 checks: typos, vocabulary, ranking, richness
+node scripts/test-offline.mjs       # 5 checks with the network severed
+node scripts/test-hanging-cloud.mjs # cloud accepted but never answered
+npx expo export --platform android  # proves it bundles, and prints the real size
+```
+
+The last two need the dev server running and drive it through Playwright.
+Store assets regenerate from the design tokens:
+
+```bash
+python scripts/make-icons.py            # adaptive/mono/square/splash/favicon
+python scripts/make-feature-graphic.py  # 1024x500, in the app's own typefaces
+node scripts/capture-screenshots.mjs    # 4 phone shots at 1080x2340
 ```
 
 The cloud tier has its own two:
