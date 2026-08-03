@@ -43,6 +43,9 @@ CONCURRENCY = 4
 DEPTH = 2
 CATS_PER_BATCH = 4
 BATCH_TIMEOUT_S = 2700
+# Below this, a zero-row batch means no search ran (error), not an empty area.
+# Real batches take 300–2700s; the fastest legitimate one observed was ~400s.
+NO_SEARCH_S = 90
 INACTIVITY = "4m"
 INGEST_EVERY = 10
 MAX_CYCLES = 100
@@ -249,11 +252,26 @@ def sweep_city(slug: str) -> bool:
         if n:
             state["done"].append(batch["id"])
             state["failed"].pop(batch["id"], None)
-        elif dt < 90 and not online():
-            # Zero rows THAT FAST means the network died mid-batch, not that
-            # the area is empty. Don't score it against the batch at all.
-            log(f"  {batch['id']}: network dropped mid-batch — not counted")
+        elif dt < NO_SEARCH_S:
+            # Zero rows THAT FAST means no search actually ran — a real cell
+            # takes many minutes even when sparse. Measured across 260 logged
+            # batches, every fast-zero was transient (dead network, a gmaps
+            # start-up error) and every one of them yielded rows on a later
+            # cycle; not one legitimately-empty cell ever returned in under
+            # 90s. Previously this forgiveness required the network to ALSO
+            # be down at that instant, so a crash-looping binary on a live
+            # connection could burn three strikes and retire a cell as
+            # "genuinely empty" — silent, permanent coverage loss in a
+            # project whose whole point is complete data. Never score it.
+            state["fast_zero"] = state.get("fast_zero", 0) + 1
+            log(f"  {batch['id']}: 0 rows in {dt:.0f}s — no search ran, not counted "
+                f"(fast-zero #{state['fast_zero']})")
             save_state(d, state)
+            if not online():
+                wait_for_network()
+            else:
+                # Back off a little so a hard-failing binary can't spin.
+                time.sleep(min(30 * state["fast_zero"], 300))
             continue
         else:
             state["failed"][batch["id"]] = state["failed"].get(batch["id"], 0) + 1
