@@ -13,7 +13,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type {
   DataSource, GoogleReview, Place, SearchArgs, SearchResult, Suggestion,
 } from './types';
-import { DEFAULT_RADIUS_M, RADIUS_STEPS, urduToLatin } from './search';
+import { DEFAULT_RADIUS_M, RADIUS_STEPS, cleanName, urduToLatin } from './search';
 import { extractNeeds } from './facets';
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -64,7 +64,7 @@ export function ensureCloudUser(): Promise<string | null> {
 function fromRow(r: any): Place {
   return {
     id: r.id,
-    name: r.name,
+    name: cleanName(r.name),
     categoryBucket: r.category_bucket ?? null,
     googleCategory: r.google_category ?? null,
     lat: r.lat_out ?? r.lat,
@@ -169,7 +169,7 @@ export class SupabaseSource implements DataSource {
     if (error) throw error;
     return ((data ?? []) as any[]).map((r: any): Suggestion => ({
       id: r.id,
-      name: r.name,
+      name: cleanName(r.name),
       categoryBucket: r.category_bucket ?? null,
       locality: r.locality ?? null,
       rating: r.rating ?? null,

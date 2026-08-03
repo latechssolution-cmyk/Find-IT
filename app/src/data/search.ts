@@ -23,6 +23,31 @@ export function norm(s: string): string {
 }
 
 /**
+ * Scraped names carry characters that cannot render.
+ *
+ * Private Use Area codepoints are the offender: U+F8FF is the Apple logo,
+ * which draws ONLY on Apple platforms and is a tofu box everywhere else —
+ * including every Android phone this app targets. Measured in the real
+ * bundles, PUA is rare (1 in 18,000) but it is 100% broken when it appears,
+ * and a tofu box in a business name is the kind of detail that reads as
+ * "this app is held together with tape".
+ *
+ * Emoji are deliberately KEPT: they're merchant branding ("Hungry Flame 🔥",
+ * 44 of 18,000), they render natively on iOS and Android, and stripping them
+ * would edit someone's shop name to suit our font stack.
+ */
+const UNRENDERABLE = /[\u{E000}-\u{F8FF}\u{F0000}-\u{FFFFD}\u{100000}-\u{10FFFD}]/gu;
+
+export function cleanName(raw: string | null | undefined): string {
+  if (!raw) return '';
+  return raw
+    .replace(UNRENDERABLE, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–—·,.]+/, '')      // leading separators left by the strip
+    .trim();
+}
+
+/**
  * Pakistani-English / Roman-Urdu variants. This table is the difference
  * between "search works" and "search works HERE" — "saloon" for salon and
  * "hotel" for a roadside restaurant are the local norm, not typos.

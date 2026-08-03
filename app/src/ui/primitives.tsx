@@ -14,7 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors, curve, motion, radius, shadow, space, type as typo, type Scheme } from '../theme';
-import { Icon, type IconName } from './Icon';
+import { Icon, Star, type IconName } from './Icon';
 import { useScheme } from './useScheme';
 
 /* ------------------------------------------------------------------ Pressable
@@ -144,9 +144,12 @@ export function Stars({ value, size = 13 }: { value: number; size?: number }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {[0, 1, 2, 3, 4].map((i) => (
-        <Text key={i} style={{ fontSize: size, color: i < full || (i === full && half) ? c.star : c.textFaint }}>
-          {i < full ? '★' : i === full && half ? '⯨' : '☆'}
-        </Text>
+        <Star
+          key={i}
+          size={size}
+          fill={i < full ? 'full' : i === full && half ? 'half' : 'empty'}
+          color={i < full || (i === full && half) ? c.star : c.textFaint}
+        />
       ))}
     </View>
   );
@@ -159,7 +162,7 @@ export function RatingPill({ value, count, size = 'sm' }: { value: number; count
   const c = colors(sch);
   return (
     <View style={[styles.ratingPill, { backgroundColor: c.accentWash }]}>
-      <Text style={{ fontSize: size === 'lg' ? 13 : 11, color: c.star }}>★</Text>
+      <Star size={size === 'lg' ? 13 : 11} color={c.star} />
       <Text style={[size === 'lg' ? typo.bodyMed : typo.label, { color: c.textHeading }]}>
         {value.toFixed(1)}
       </Text>

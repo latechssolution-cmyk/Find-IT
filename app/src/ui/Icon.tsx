@@ -12,11 +12,36 @@
  */
 
 import React from 'react';
-import { Feather } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 
 import type { CategoryBucket } from '../data/types';
 
 export type IconName = React.ComponentProps<typeof Feather>['name'];
+
+/**
+ * Stars are the exception to "Feather only", for the same reason Feather
+ * replaced emoji: the app was drawing ratings with the raw glyphs ★ ☆ ⯨,
+ * which have NO font family of their own and fall through to whatever the
+ * OS supplies. Measured on web, every ★ in the app rendered in
+ * `-apple-system` rather than our type — and U+2BE8 (half star) is simply
+ * absent from most Android system fonts, so it renders as a tofu box. The
+ * star is the single most-repeated glyph in this product; it cannot be the
+ * one thing we don't control.
+ *
+ * Ionicons ships filled/half/outline stars in one already-bundled icon
+ * font, so all three states share a grid, a baseline and a colour.
+ */
+export function Star({
+  fill = 'full', size = 12, color,
+}: { fill?: 'full' | 'half' | 'empty'; size?: number; color?: string }) {
+  return (
+    <Ionicons
+      name={fill === 'full' ? 'star' : fill === 'half' ? 'star-half' : 'star-outline'}
+      size={size}
+      color={color}
+    />
+  );
+}
 
 export function Icon({
   name, size = 18, color, muted, style,

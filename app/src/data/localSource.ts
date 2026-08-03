@@ -11,7 +11,7 @@ import type {
 } from './types';
 import {
   DEFAULT_RADIUS_M, RADIUS_STEPS, distanceM, expand, guessCategory, isTypoOf,
-  norm, relevance, scorePlace, trigramSim, urduToLatin,
+  norm, relevance, scorePlace, trigramSim, urduToLatin, cleanName,
 } from './search';
 import { extractNeeds, parseFacets } from './facets';
 
@@ -44,7 +44,7 @@ const LAZY_REACH_M = 80_000;
 function hydrate(r: RawPlace): Place {
   return {
     id: r.id,
-    name: r.n,
+    name: cleanName(r.n),
     categoryBucket: (r.c as CategoryBucket) ?? null,
     googleCategory: r.gc ?? null,
     lat: r.lat,

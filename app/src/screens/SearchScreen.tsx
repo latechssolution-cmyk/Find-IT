@@ -21,7 +21,7 @@ import {
   type CategoryBucket, type Place, type SearchResult, type Suggestion,
 } from '../data';
 import { PlaceCard, formatDistance } from '../ui/PlaceCard';
-import { Icon, categoryIcon } from '../ui/Icon';
+import { Icon, Star, categoryIcon } from '../ui/Icon';
 import { Button, Chip, EmptyState, PlaceCardSkeleton, Tap, Txt } from '../ui/primitives';
 import { useScheme } from '../ui/useScheme';
 import { useBack } from '../hooks/useBack';
@@ -179,10 +179,15 @@ export default function SearchScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Txt variant="body" numberOfLines={1}>{item.name}</Txt>
-                <Txt variant="caption" muted numberOfLines={1}>
-                  {[item.locality, item.rating ? `★ ${item.rating.toFixed(1)}` : null,
-                    formatDistance(item.distanceM)].filter(Boolean).join(' · ')}
-                </Txt>
+                {/* Star as an icon, not a glyph — a bare ★ in a text run
+                    falls through to the system font (see ui/Icon.tsx). */}
+                <View style={styles.sugMeta}>
+                  {item.rating ? <Star size={10} color={c.star} /> : null}
+                  <Txt variant="caption" muted numberOfLines={1}>
+                    {[item.rating ? item.rating.toFixed(1) : null, item.locality,
+                      formatDistance(item.distanceM)].filter(Boolean).join(' · ')}
+                  </Txt>
+                </View>
               </View>
             </Tap>
           )}
@@ -364,6 +369,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg, paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  sugMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   sugIcon: {
     width: 34, height: 34, borderRadius: radius.sm,
     alignItems: 'center', justifyContent: 'center',
