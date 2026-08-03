@@ -40,9 +40,53 @@ export function getLocalSource(): LocalSource {
   return localInstance;
 }
 
+/**
+ * Cloud with the bundle as a live fallback — the PRD's offline tier, made
+ * real. On this market's networks a request that blinks is Tuesday; a failed
+ * cloud call must degrade to bundled results, never to "Nothing here yet"
+ * (which reads as "your city is missing", the worst possible lie).
+ */
+class ResilientSource implements DataSource {
+  constructor(
+    private readonly cloud: DataSource,
+    private readonly local: LocalSource,
+  ) {}
+  ready() { return this.cloud.ready(); }
+  private async or<T>(run: (ds: DataSource) => Promise<T>, empty?: (v: T) => boolean): Promise<T> {
+    try {
+      const v = await run(this.cloud);
+      // Treat "errored into nothing" and "network said no" the same way.
+      if (empty && empty(v)) return await run(this.local);
+      return v;
+    } catch {
+      return run(this.local);
+    }
+  }
+  search(args: Parameters<DataSource['search']>[0]) {
+    return this.or((ds) => ds.search(args), (r) => r.places.length === 0 && !args.q && !args.facets?.length);
+  }
+  suggest(q: string, lat?: number | null, lng?: number | null) {
+    return this.or((ds) => ds.suggest(q, lat, lng));
+  }
+  getPlace(id: string) {
+    return this.or((ds) => ds.getPlace(id), (v) => v == null);
+  }
+  getGoogleReviews(id: string) {
+    return this.or((ds) => ds.getGoogleReviews(id), (v) => v.length === 0);
+  }
+  similarNearby(id: string, limit?: number) {
+    return this.or((ds) => ds.similarNearby(id, limit), (v) => v.length === 0);
+  }
+  countInRadii(args: Parameters<DataSource['countInRadii']>[0], radii: number[]) {
+    return this.or((ds) => ds.countInRadii(args, radii));
+  }
+}
+
 export function getDataSource(): DataSource {
   if (!instance) {
-    instance = hasSupabase && supabase ? new SupabaseSource(supabase) : getLocalSource();
+    instance = hasSupabase && supabase
+      ? new ResilientSource(new SupabaseSource(supabase), getLocalSource())
+      : getLocalSource();
   }
   return instance;
 }

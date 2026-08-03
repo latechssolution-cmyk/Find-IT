@@ -31,6 +31,35 @@ export const supabase: SupabaseClient | null = hasSupabase
     })
   : null;
 
+/**
+ * A user identity with zero signup friction. Saves/reviews sync via RLS
+ * (auth.uid()), so we mint an anonymous user on first need — the account can
+ * be linked to a phone/email later without losing anything. If the project
+ * has anonymous sign-ins disabled this quietly returns null and the sync
+ * queue simply keeps waiting; nothing in the UI depends on it succeeding.
+ */
+let ensuring: Promise<string | null> | null = null;
+export function ensureCloudUser(): Promise<string | null> {
+  if (!supabase) return Promise.resolve(null);
+  if (!ensuring) {
+    ensuring = (async () => {
+      try {
+        const { data } = await supabase!.auth.getSession();
+        if (data.session?.user?.id) return data.session.user.id;
+        const { data: anon, error } = await supabase!.auth.signInAnonymously();
+        if (error) return null;                  // provider disabled — fine
+        return anon.user?.id ?? null;
+      } catch {
+        return null;
+      } finally {
+        // allow a later retry if this attempt produced no user
+        setTimeout(() => { ensuring = null; }, 60_000);
+      }
+    })();
+  }
+  return ensuring;
+}
+
 /* search_places() returns snake_case columns; map once, here. */
 function fromRow(r: any): Place {
   return {

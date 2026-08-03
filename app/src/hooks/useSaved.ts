@@ -9,7 +9,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from './store';
-import { supabase, hasSupabase } from '../data/supabaseSource';
+import { supabase, hasSupabase, ensureCloudUser } from '../data/supabaseSource';
 import { track } from './analytics';
 
 const SAVED_KEY = 'findit.saved.v1';
@@ -94,25 +94,32 @@ export const useSavedStore = create<SavedState>((set, get) => ({
     if (!hasSupabase || !supabase) return;      // local-only until configured
     const queue = await readJSON<any[]>(QUEUE_KEY, []);
     if (!queue.length) return;
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth?.user?.id;
-    if (!uid) return;                            // sync when signed in
+    // Anonymous user on demand: zero-friction identity for RLS. Returns null
+    // while the provider is disabled — the queue just waits.
+    const uid = await ensureCloudUser();
+    if (!uid) return;
     const rest: any[] = [];
     for (const item of queue) {
       try {
+        const placeId = item.kind === 'save' ? item.placeId : item.review?.placeId;
+        const dbId = await resolvePlaceId(placeId);
+        if (!dbId) continue;                     // place not in cloud: drop
         if (item.kind === 'save') {
           if (item.on) {
-            await supabase.from('saved_place').upsert({ user_id: uid, place_id: item.placeId });
+            await supabase.from('saved_place').upsert({ user_id: uid, place_id: dbId });
           } else {
             await supabase.from('saved_place').delete()
-              .eq('user_id', uid).eq('place_id', item.placeId);
+              .eq('user_id', uid).eq('place_id', dbId);
           }
         } else if (item.kind === 'review') {
           const r = item.review as OwnReview;
-          await supabase.from('review').upsert({
-            user_id: uid, place_id: r.placeId, stars: r.stars,
-            tags: r.tags, body: r.body ?? null,
-          });
+          // review's PK is a surrogate id — the real uniqueness is
+          // (place_id, user_id), so the conflict target must say so or a
+          // second edit violates the unique constraint instead of updating.
+          await supabase.from('review').upsert(
+            { user_id: uid, place_id: dbId, stars: r.stars, tags: r.tags, body: r.body ?? null },
+            { onConflict: 'place_id,user_id' },
+          );
         }
       } catch {
         rest.push(item);                        // keep for the next attempt
@@ -121,6 +128,23 @@ export const useSavedStore = create<SavedState>((set, get) => ({
     await writeJSON(QUEUE_KEY, rest);
   },
 }));
+
+/**
+ * A queued item can carry either kind of place id: the cloud DB uuid (saved
+ * while online) or the pipeline ext_id from the bundled data (saved offline —
+ * "g_1475…" or the canonical uuid, which is a DIFFERENT uuid from the DB row).
+ * Resolve to the DB id; ext_id is unique, so one lookup each way suffices.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function resolvePlaceId(pid?: string): Promise<string | null> {
+  if (!pid || !supabase) return null;
+  if (UUID_RE.test(pid)) {
+    const { data } = await supabase.from('place').select('id').eq('id', pid).maybeSingle();
+    if (data?.id) return data.id;
+  }
+  const { data } = await supabase.from('place').select('id').eq('ext_id', pid).maybeSingle();
+  return data?.id ?? null;
+}
 
 async function enqueue(item: unknown): Promise<void> {
   const q = await readJSON<unknown[]>(QUEUE_KEY, []);
