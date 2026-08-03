@@ -31,6 +31,7 @@ import {
 } from '../data';
 import { parseFacets, splitFacets } from '../data/facets';
 import { Map } from '../ui/Map';
+import { MapBoundary } from '../ui/MapBoundary';
 import { PlaceCard, formatDistance } from '../ui/PlaceCard';
 import { ClampText } from '../ui/ClampText';
 import { PopularTimes } from '../ui/PopularTimes';
@@ -624,13 +625,17 @@ export default function PlaceScreen() {
 
         {/* -------------------------------------------------- mini map */}
         <View style={[styles.miniMap, { borderColor: c.border }]}>
-          <Map
-            center={[place.lng, place.lat]}
-            zoom={15}
-            places={[place]}
-            interactive={false}
-            showUser={false}
-          />
+          {/* The map is an enhancement, not the payload — if WebGL fails the
+              name, hours and Directions must still be here. */}
+          <MapBoundary onOpenExternal={openDirections}>
+            <Map
+              center={[place.lng, place.lat]}
+              zoom={15}
+              places={[place]}
+              interactive={false}
+              showUser={false}
+            />
+          </MapBoundary>
           <Tap onPress={openDirections} haptic="light" style={StyleSheet.absoluteFill}>
             <View />
           </Tap>

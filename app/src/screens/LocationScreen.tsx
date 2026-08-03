@@ -23,6 +23,7 @@ import Animated, {
 import { colors, curve, motion, radius as R, shadow, space } from '../theme';
 import { getLocalSource, RADIUS_STEPS } from '../data';
 import { Map, type MapHandle } from '../ui/Map';
+import { MapBoundary } from '../ui/MapBoundary';
 import { Icon } from '../ui/Icon';
 import { Button, Chip, Tap, Txt } from '../ui/primitives';
 import { useScheme } from '../ui/useScheme';
@@ -117,15 +118,19 @@ export default function LocationScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      <Map
-        ref={mapRef}
-        center={[center.lng, center.lat]}
-        zoom={13}
-        radiusM={radiusM}
-        onRegionChangeStart={onRegionStart}
-        onRegionChange={onRegionChange}
-        showUser
-      />
+      {/* Picking a point without a map is impossible, so the fallback card
+          is the honest answer here — the city shortcuts below still work. */}
+      <MapBoundary>
+        <Map
+          ref={mapRef}
+          center={[center.lng, center.lat]}
+          zoom={13}
+          radiusM={radiusM}
+          onRegionChangeStart={onRegionStart}
+          onRegionChange={onRegionChange}
+          showUser
+        />
+      </MapBoundary>
 
       {/* fixed centre pin — an overlay, NOT a map marker */}
       <View pointerEvents="none" style={styles.pinWrap}>

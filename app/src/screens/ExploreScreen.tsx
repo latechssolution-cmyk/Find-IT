@@ -25,6 +25,7 @@ import { enter } from '../ui/enter';
 import { reverseGeocode, useLocation } from '../hooks/useLocation';
 import { track } from '../hooks/analytics';
 import { FilterSheet } from '../ui/FilterSheet';
+import { MapBoundary } from '../ui/MapBoundary';
 
 /**
  * Second chip row: needs, not categories. Multi-select ANDed filters over the
@@ -150,15 +151,20 @@ export default function ExploreScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: c.bg }]}>
-      <Map
-        ref={mapRef}
-        center={center}
-        zoom={13}
-        places={places}
-        selectedId={selected}
-        onSelect={onSelectMarker}
-        onRegionChange={onRegionChange}
-      />
+      {/* If the map dies, Explore still works: the results sheet carries the
+          actual answer, so the boundary renders nothing rather than an error
+          card that would sit behind the sheet where no one can read it. */}
+      <MapBoundary height={0}>
+        <Map
+          ref={mapRef}
+          center={center}
+          zoom={13}
+          places={places}
+          selectedId={selected}
+          onSelect={onSelectMarker}
+          onRegionChange={onRegionChange}
+        />
+      </MapBoundary>
 
       {/* "Search this area" — appears only after a meaningful pan */}
       {panned ? (
