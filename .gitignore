@@ -1,0 +1,35 @@
+# --- node / expo ---
+node_modules/
+.expo/
+.expo-export/
+dist/
+web-build/
+*.tsbuildinfo
+.metro-health-check*
+
+# --- app data bundles ARE committed (app must run from a bare clone) ---
+# assets/data/*.json intentionally tracked
+
+# --- pipeline artifacts: GBs of parquet + raw open data, all regenerable ---
+pipeline/out/
+pipeline/_pk/
+*.parquet
+
+# --- scraper: binary from gosom releases + hundreds of MB of sweep output ---
+scraper/gmaps.exe
+scraper/sweeps/
+scraper/pilot/
+scraper/__pycache__/
+__pycache__/
+
+# --- env / secrets ---
+.env
+.env.*
+*.pem
+
+# --- OS / editor / tooling ---
+.DS_Store
+Thumbs.db
+.claude/
+.vscode/
+.idea/

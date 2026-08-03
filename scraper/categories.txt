@@ -1,0 +1,40 @@
+restaurant
+cafe
+fast food
+bakery
+grocery store
+supermarket
+pharmacy
+hospital
+clinic
+doctor
+dentist
+beauty salon
+barber shop
+gym
+school
+college
+bank
+atm
+hotel
+clothing store
+shoe store
+mobile phone shop
+electronics store
+hardware store
+furniture store
+auto repair
+car dealer
+petrol pump
+tailor
+laundry
+printing press
+travel agency
+real estate agency
+book shop
+optician
+jewellery shop
+sweet shop
+juice shop
+tea shop
+marriage hall

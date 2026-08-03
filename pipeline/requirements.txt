@@ -1,0 +1,5 @@
+duckdb>=1.5
+pyarrow>=21
+pandas>=2.2
+h3>=4.3
+rapidfuzz>=3.9
