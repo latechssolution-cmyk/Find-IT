@@ -42,7 +42,21 @@ ZOOM = 14
 CONCURRENCY = 4
 DEPTH = 2
 CATS_PER_BATCH = 4
-BATCH_TIMEOUT_S = 2700
+# Backstop against a WEDGED process, not a budget for a productive one.
+#
+# gmaps is launched with `-exit-on-inactivity 4m`, so it quits by itself once
+# results stop arriving. A batch therefore only runs long because it is still
+# finding places — and the old 2700s cap was cutting exactly those off.
+# Measured over 141 logged batches:
+#
+#     completed normally   median 340 rows in 1396s
+#     killed at the cap    median 606 rows in 2700s
+#
+# Batches killed at 45 minutes were yielding nearly DOUBLE the rows of ones
+# that finished; the cap was hitting the densest cells hardest, which are the
+# ones worth having. Raised to 2h. Anything still alive at 2h with a 4-minute
+# inactivity timer inside it is genuinely wedged, which is what this guards.
+BATCH_TIMEOUT_S = 7200
 # Below this, a zero-row batch means no search ran (error), not an empty area.
 # Real batches take 300–2700s; the fastest legitimate one observed was ~400s.
 NO_SEARCH_S = 90
