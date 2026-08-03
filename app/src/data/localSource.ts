@@ -370,18 +370,35 @@ export class LocalSource implements DataSource {
    * A landmark is close, far better known than the target (rating count being
    * the best available proxy for "everyone knows it"), and not the target.
    */
-  async nearestLandmark(id: string): Promise<{ name: string; distanceM: number } | null> {
+  /**
+   * "400 m from Jinnah Colony" — worth more than a postal address here.
+   *
+   * Takes COORDINATES, not an id. It used to look the subject up by id in the
+   * bundle, which meant a cloud-backed place (a DB uuid that isn't in the
+   * 6,000-place slice) failed the very first lookup and silently never showed
+   * a landmark — i.e. almost never, now that the cloud is the default source.
+   * Coordinates work for any place from any source.
+   *
+   * The bundle stays the LANDMARK source on purpose: it is the top-quality
+   * slice of the city, which is exactly the set of places famous enough to
+   * navigate by. ensureFor() pulls in the right city first.
+   */
+  async nearestLandmark(
+    lat: number, lng: number, ratingCount?: number | null, selfId?: string,
+  ): Promise<{ name: string; distanceM: number } | null> {
     await this.ready();
-    const p = this.byId.get(id);
-    if (!p) return null;
+    await this.ensureFor({ lat, lng });
     const MIN_FAME = 150;
     const MAX_M = 700;
+    const mine = ratingCount ?? 0;
     let best: { name: string; distanceM: number } | null = null;
     for (const o of this.places) {
-      if (o.id === p.id) continue;
+      if (selfId && o.id === selfId) continue;
       if ((o.ratingCount ?? 0) < MIN_FAME) continue;
-      if ((o.ratingCount ?? 0) < (p.ratingCount ?? 0) * 2) continue;
-      const d = distanceM(p.lat, p.lng, o.lat, o.lng);
+      // A landmark must be markedly better known than the place itself,
+      // otherwise "next to <equally obscure shop>" helps nobody.
+      if ((o.ratingCount ?? 0) < mine * 2) continue;
+      const d = distanceM(lat, lng, o.lat, o.lng);
       if (d > MAX_M) continue;
       if (!best || d < best.distanceM) best = { name: o.name, distanceM: d };
     }

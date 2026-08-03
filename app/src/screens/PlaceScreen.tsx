@@ -139,10 +139,14 @@ export default function PlaceScreen() {
     if (!id) return;
     track('place_view', { id });
     const ds = getDataSource();
-    ds.getPlace(id).then(setPlace);
+    ds.getPlace(id).then((p) => {
+      setPlace(p);
+      // Landmark is derived from the place's coordinates, so it chains off
+      // this one fetch rather than issuing a second identical request.
+      if (p) getLocalSource().nearestLandmark(p.lat, p.lng, p.ratingCount, p.id).then(setLandmark);
+    });
     ds.getGoogleReviews(id).then(setReviews);
     ds.similarNearby(id, 8).then(setSimilar);
-    getLocalSource().nearestLandmark(id).then(setLandmark);
   }, [id]);
 
   const openDirections = useCallback(() => {
