@@ -44,9 +44,37 @@ function PlaceCardBase({
   const busyNow = open === true
     && (place.popularTimes?.[now.getDay()]?.[now.getHours()] ?? 0) >= 70;
 
+  /**
+   * One sentence, in decision order — the same order the eye reads the card.
+   * Without this a screen reader emits the visual fragments one by one
+   * ("4.9", "189", "Open", "190 m"), which is technically complete and
+   * practically useless. The children are hidden behind it so the card is a
+   * single swipe stop rather than seven.
+   */
+  const spoken = [
+    place.name,
+    place.rating != null
+      ? `${place.rating.toFixed(1)} out of 5${place.ratingCount ? ` from ${place.ratingCount} ratings` : ''}`
+      : 'no ratings yet',
+    place.googleCategory ?? meta.label,
+    open === true ? 'open now' : open === false ? 'closed now' : null,
+    dist ? `${dist} away` : null,
+    price,
+    place.menuUrl ? 'has menu' : null,
+    place.cardsOk ? 'accepts cards' : null,
+    visited ? 'visited' : null,
+  ].filter(Boolean).join(', ');
+
   return (
     <Animated.View entering={enter(FadeIn.delay(Math.min(index, 8) * 26).duration(240))}>
-      <Tap onPress={onPress} haptic="light" scaleTo={0.985} style={[styles.row, { borderBottomColor: c.border }]}>
+      <Tap
+        onPress={onPress}
+        haptic="light"
+        scaleTo={0.985}
+        accessibilityRole="button"
+        accessibilityLabel={spoken}
+        style={[styles.row, { borderBottomColor: c.border }]}
+      >
         <View style={[styles.thumb, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
           {photo ? (
             /* Scraped Google photo URLs are signed (gps-cs-s) — the size

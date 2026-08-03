@@ -185,7 +185,13 @@ export function RatingPill({ value, count, size = 'sm' }: { value: number; count
   const sch = useScheme();
   const c = colors(sch);
   return (
-    <View style={[styles.ratingPill, { backgroundColor: c.accentWash }]}>
+    /* One accessible node, not three: a screen reader should say "4.9 out of
+       5, 189 ratings", never "star, four point nine, one eight nine". */
+    <View
+      accessible
+      accessibilityLabel={`${value.toFixed(1)} out of 5${count ? `, ${count} ratings` : ''}`}
+      style={[styles.ratingPill, { backgroundColor: c.accentWash }]}
+    >
       <Star size={size === 'lg' ? 13 : 11} color={c.star} />
       <Text style={[size === 'lg' ? typo.bodyMed : typo.label, { color: c.textHeading }]}>
         {value.toFixed(1)}
@@ -207,8 +213,14 @@ export function OpenState({ open, compact }: { open: boolean | null; compact?: b
   if (open === null) return <Txt variant="caption" faint>Hours unknown</Txt>;
   const tone = open ? c.open : c.closed;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-      <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: tone }} />
+    <View
+      accessible
+      accessibilityLabel={open ? 'Open now' : 'Closed now'}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+    >
+      {/* Decorative: the word next to it already carries the meaning. */}
+      <View accessibilityElementsHidden importantForAccessibility="no"
+        style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: tone }} />
       <Text style={[typo.caption, { color: tone }]}>
         {open ? (compact ? 'Open' : 'Open now') : 'Closed'}
       </Text>
