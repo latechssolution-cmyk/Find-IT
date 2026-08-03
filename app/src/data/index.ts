@@ -52,9 +52,30 @@ class ResilientSource implements DataSource {
     private readonly local: LocalSource,
   ) {}
   ready() { return this.cloud.ready(); }
+
+  /**
+   * One retry before giving up on the cloud.
+   *
+   * Measured against the live tier, identical queries range 0.23s to 4.53s
+   * with statistics current and plans sound — that is shared-CPU variance on
+   * the free plan, not our SQL. When a query drifts past PostgREST's
+   * statement timeout the call fails outright, and without a retry a single
+   * unlucky moment silently drops the user onto the 6,000-place bundle while
+   * the cloud holds 102,315. Retrying once costs a few hundred ms on the rare
+   * failure and converts most of them into a correct answer.
+   */
+  private async once<T>(run: (ds: DataSource) => Promise<T>): Promise<T> {
+    try {
+      return await run(this.cloud);
+    } catch {
+      await new Promise((r) => setTimeout(r, 350));
+      return run(this.cloud);
+    }
+  }
+
   private async or<T>(run: (ds: DataSource) => Promise<T>, empty?: (v: T) => boolean): Promise<T> {
     try {
-      const v = await run(this.cloud);
+      const v = await this.once(run);
       // Treat "errored into nothing" and "network said no" the same way.
       if (empty && empty(v)) return await run(this.local);
       return v;
