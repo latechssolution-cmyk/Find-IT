@@ -3,10 +3,11 @@
  * (PRD §6.4: chips wrap rather than truncate, no hard-coded row heights).
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator, Pressable, StyleSheet, Text, View,
-  type PressableProps, type StyleProp, type TextProps, type TextStyle, type ViewStyle,
+  type LayoutChangeEvent, type PressableProps, type StyleProp, type TextProps,
+  type TextStyle, type ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -29,9 +30,30 @@ export interface TapProps extends PressableProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function Tap({ haptic = 'selection', scaleTo = 0.97, style, onPressIn, onPress, children, ...rest }: TapProps) {
+/** Apple HIG 44pt / Material 48dp. 44 is the floor both agree on. */
+const MIN_TOUCH = 44;
+
+export function Tap({
+  haptic = 'selection', scaleTo = 0.97, style, onPressIn, onPress, children, hitSlop, ...rest
+}: TapProps) {
   const s = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+  const [slop, setSlop] = useState<number | undefined>(undefined);
+
+  /**
+   * Touch targets must clear ~44px even when the control is drawn smaller.
+   * Density and reachability are in tension: the compact pills and chips in
+   * the Explore header are deliberately 33–38px tall so the map keeps its
+   * space, but a 33px target misses often — especially one-handed on a bus,
+   * which is the actual usage here. hitSlop resolves the tension: the touch
+   * area grows, the pixels don't. Measured per element rather than guessed,
+   * so a control that is already big enough pays nothing.
+   */
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const { height } = e.nativeEvent.layout;
+    const need = Math.max(0, Math.ceil((MIN_TOUCH - height) / 2));
+    setSlop((prev) => (prev === need ? prev : need || undefined));
+  }, []);
 
   // Press physics are ASYMMETRIC on purpose: down is a fast timing so the
   // response feels instant, up is a spring so the release feels like material.
@@ -59,6 +81,8 @@ export function Tap({ haptic = 'selection', scaleTo = 0.97, style, onPressIn, on
   return (
     <AnimatedPressable
       {...rest}
+      onLayout={onLayout}
+      hitSlop={hitSlop ?? slop}
       onPressIn={handleIn}
       onPressOut={handleOut}
       onPress={handlePress}
