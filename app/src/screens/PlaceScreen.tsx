@@ -869,7 +869,11 @@ const styles = StyleSheet.create({
   },
   circleBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   photoCount: {
-    position: 'absolute', bottom: space.md, right: space.md,
+    // `end`, not `right`: this is the only single-sided absolute position in
+    // the app, so it is the only one that would stay pinned to the wrong
+    // corner under RTL. Every other left/right here is a symmetric pair and
+    // flips for free. Urdu is RTL and we render Urdu names today.
+    position: 'absolute', bottom: space.md, end: space.md,
     paddingHorizontal: space.sm, paddingVertical: 4, borderRadius: radius.xs,
   },
   section: { paddingHorizontal: space.lg, paddingTop: space.xl, gap: space.sm },
