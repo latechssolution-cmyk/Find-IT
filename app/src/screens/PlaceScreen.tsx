@@ -302,7 +302,12 @@ export default function PlaceScreen() {
                 accessibilityLabel={saved ? 'Remove from saved' : 'Save place'}
                 style={[styles.circleBtn, curve, { backgroundColor: c.surface }, shadow(sch, 2)]}
               >
-                <Icon name="heart" size={18} color={saved ? c.closed : c.textHeading} />
+                {/* Bookmark, not a heart: the feature is called "Saved"
+                    everywhere else in the product (screen title, Explore
+                    pill, accessibility labels), and one action must not have
+                    two symbols. Caramel when set — the app's "active" tone;
+                    the red here was c.closed, the CLOSED-status colour. */}
+                <Icon name="bookmark" size={18} color={saved ? c.accentText : c.textHeading} />
               </Tap>
             </View>
           </View>
@@ -777,7 +782,7 @@ export default function PlaceScreen() {
           ) : null}
           <Tap onPress={() => id && savedStore.toggleSave(id)} haptic="medium" scaleTo={0.94}
             style={[styles.stickyIcon, curve, { backgroundColor: c.accentWash }]}>
-            <Icon name="heart" size={19} color={saved ? c.closed : c.textHeading} />
+            <Icon name="bookmark" size={19} color={saved ? c.accentText : c.textHeading} />
           </Tap>
         </Animated.View>
       ) : null}

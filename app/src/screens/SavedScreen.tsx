@@ -66,7 +66,7 @@ export default function SavedScreen() {
         <EmptyState
           icon="bookmark"
           title="Nothing saved yet"
-          body="Tap the heart on any place to keep it here — it stays available offline."
+          body="Tap the bookmark on any place to keep it here — it stays available offline."
           action={<Button label="Explore nearby" variant="tonal" onPress={() => router.replace('/')} />}
         />
       ) : (
