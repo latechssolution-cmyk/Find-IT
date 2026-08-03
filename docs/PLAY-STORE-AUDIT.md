@@ -81,7 +81,7 @@ a child audience are marked ⚠️ FAMILIES.*
 
 | Requirement | Applies? | Status | Action | Source |
 |---|---|---|---|---|
-| **Target API 36 (Android 16) for new apps from 31 Aug 2026** | Yes | ⚠️ UNVERIFIED | Confirm the AAB reports `targetSdkVersion 36`. Expo 57 should default there, but pin it explicitly with `expo-build-properties` — do not assume. Extension to 1 Nov 2026 available if needed | [Target API levels](https://support.google.com/googleplay/android-developer/answer/11926878) |
+| **Target API 36 (Android 16) for new apps from 31 Aug 2026** | Yes | ✅ **FIXED 4 Aug** | Expo SDK 57 defaulted to **35**, not 36 — confirmed by reading `ExpoRootProjectPlugin.kt` (`getVersionOrDefault("targetSdk", "35")`) and by generating the native project, which carried no version catalog to override it. This app **would have been rejected**. Pinned via `expo-build-properties`; `expo prebuild` now emits `android.targetSdkVersion=36` | [Target API levels](https://support.google.com/googleplay/android-developer/answer/11926878) |
 | **App Bundle (.aab), 64-bit, Play App Signing** | Yes | ✅ likely pass | `eas build --platform android` produces a compliant AAB by default. Verify 64-bit libs present | [Play Console](https://support.google.com/googleplay/android-developer/answer/9859152) |
 | **16 KB page size compatibility** | Yes | ⚠️ UNVERIFIED | RN 0.86 + Expo 57 native libs should be compliant; verify with the Play Console pre-launch report | [Android docs](https://developer.android.com/guide/practices/page-sizes) |
 | **Privacy policy, publicly hosted** | Yes | ❌ FAIL | None exists. Must cover: location use, review content, analytics, Supabase as processor, deletion route. Host at a stable URL | [User Data policy](https://support.google.com/googleplay/android-developer/answer/10144311) |
@@ -204,7 +204,8 @@ then 100% over ~5 days if vitals hold.
 
 ### 🔴 Blockers
 - [ ] Audience decision (13+ strongly recommended)
-- [ ] `targetSdkVersion 36` verified in an actual AAB — **31 Aug 2026**
+- [x] ~~`targetSdkVersion 36`~~ — pinned and verified in the generated
+      project on 4 Aug. Re-confirm once in the Play Console on first upload
 - [ ] Privacy policy written and hosted
 - [ ] Data Safety form completed
 - [ ] IARC content rating completed
@@ -221,8 +222,12 @@ then 100% over ~5 days if vitals hold.
 - [ ] Child Safety Standards published (UGC app)
 
 ### 🟡 Polish
-- [ ] Launcher icon background `#FF5A3C` **does not match the chocolate/cream
-      palette** — the icon is the first brand impression; align it
+- [x] ~~Launcher icon~~ — was Expo's **default blue chevron** on a leftover
+      coral `#FF5A3C`, i.e. a template placeholder on the most-seen brand
+      surface there is. Replaced 4 Aug with a cream pin on brand chocolate
+      (`scripts/make-icons.py`, generated from the design tokens). **Still
+      worth a designer's pass** — it is a competent generic mark, not a
+      distinctive one, and a plain pin sits close to Maps iconography
 - [ ] Store listing copy and screenshots
 - [ ] Low-RAM device pass
 - [ ] Baseline profile
