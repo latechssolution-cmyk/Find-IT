@@ -13,6 +13,11 @@ import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif'
 import { colors } from '../src/theme';
 import { useScheme, useThemeBootstrap } from '../src/ui/useScheme';
 import { ScreenError } from '../src/ui/ScreenError';
+import { initCrashReporting, reportError } from '../src/hooks/crash';
+
+// Module scope, not an effect: reporting must be armed before the first
+// render can throw. No-op until a DSN exists (see hooks/crash.ts).
+initCrashReporting();
 
 /**
  * Expo Router renders this instead of the tree when any screen throws.
@@ -20,6 +25,9 @@ import { ScreenError } from '../src/ui/ScreenError';
  * end here means the user goes back to Google Maps.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  // The boundary CAUGHT it, so no crash reaches the native layer — report
+  // explicitly or these, the most user-visible errors, would be invisible.
+  reportError(error, { boundary: 'root' });
   return (
     <SafeAreaProvider>
       <ScreenError error={error} retry={retry} />
