@@ -21,13 +21,26 @@ You must choose:
 
 | | Personal | Organisation |
 |---|---|---|
-| Needs | ID + address | **D-U-N-S number** (free, 7–14 days) |
-| Gate | **12 testers × 14 continuous days** before production | none |
-| Verdict | slower, but start today and it overlaps everything | faster if you have a registered business |
+| Needs | ID + address | registered business + **D-U-N-S number** (free, but **up to 28–30 days** if you don't already hold one) |
+| Gate | **12 testers × 14 continuous days** before production | **none** |
+| Listing shows | your legal name | your company name |
+| Team | one login | multiple users, survives staff changes |
 
-**If personal: create the closed test and recruit 12 testers on day one.**
-That 14-day clock is the critical path — nothing else takes as long, and it
-runs in parallel with all the work below.
+**The decision rule:**
+
+- **Already have a D-U-N-S?** → Organisation. No contest: no tester gate, and
+  the listing carries the company name, which matters for a directory app
+  asking people to trust its data. Look it up free at
+  [dnb.com/duns-number/lookup](https://www.dnb.com/duns-number/lookup.html) —
+  registered businesses often already have one without knowing.
+- **Don't have one, and don't want to wait a month?** → Personal, and
+  **create the closed test and recruit 12 testers on day one.**
+
+The 12-tester rule is harder than it sounds: 12 real accounts, opted in and
+*staying* opted in for 14 **continuous** days. People dropping out mid-way is
+the usual reason this takes a month instead of two weeks. Over-recruit — aim
+for 15–16 so a few drop-offs don't reset the clock.
+([policy](https://support.google.com/googleplay/android-developer/answer/14151465))
 
 ### 2. Decide the audience — **I recommend 13+**
 You told me "everyone including under 13". I'd push back once more: it forces
