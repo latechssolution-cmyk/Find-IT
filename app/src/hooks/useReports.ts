@@ -24,7 +24,12 @@ export type ReportKind =
   | 'phone'           // number is wrong
   | 'location'        // pin is in the wrong place
   | 'duplicate'       // same place listed twice
-  | 'other';
+  | 'other'
+  /** The GOOD-news signal: "I went, it was open." The cheapest thing anyone
+   *  can contribute — cheaper than a review, stronger than a view — and it
+   *  is what makes scraped data self-healing instead of only self-decaying:
+   *  every other report kind can only remove trust. */
+  | 'open_ok';
 
 export interface Report {
   placeId: string;
@@ -50,6 +55,8 @@ interface ReportState {
   submit(placeId: string, kind: ReportKind, note?: string): Promise<void>;
   /** Has this user already flagged this place as closed? */
   reportedClosed(placeId: string): boolean;
+  /** Epoch ms of this user's last "it was open" confirm, or null. */
+  confirmedOpenAt(placeId: string): number | null;
   forPlace(placeId: string): Report[];
 }
 
@@ -69,8 +76,13 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   async submit(placeId, kind, note) {
     track('place_report', { id: placeId, kind });
+    // "It was open" and "it's closed" are contradictory claims; the newer
+    // one wins outright, so submitting either clears the other.
+    const contradicts: ReportKind | null =
+      kind === 'open_ok' ? 'closed' : kind === 'closed' ? 'open_ok' : null;
     const next = [
-      ...get().reports.filter((r) => !(r.placeId === placeId && r.kind === kind)),
+      ...get().reports.filter((r) => !(r.placeId === placeId
+        && (r.kind === kind || r.kind === contradicts))),
       { placeId, kind, note, at: Date.now(), synced: false },
     ].slice(-200);
     set({ reports: next });
@@ -79,6 +91,15 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   reportedClosed: (placeId) =>
     get().reports.some((r) => r.placeId === placeId && r.kind === 'closed'),
+
+  /** When this user last confirmed the place open, or null. Confirming and
+   *  reporting closed are mutually exclusive statements: whichever came LAST
+   *  is what they currently believe, so each submit clears the other (see
+   *  submit's dedupe by kind — callers pair this with reportedClosed). */
+  confirmedOpenAt: (placeId) => {
+    const r = get().reports.find((x) => x.placeId === placeId && x.kind === 'open_ok');
+    return r ? r.at : null;
+  },
 
   forPlace: (placeId) => get().reports.filter((r) => r.placeId === placeId),
 }));

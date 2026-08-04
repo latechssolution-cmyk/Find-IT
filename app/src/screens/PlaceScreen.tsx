@@ -35,7 +35,7 @@ import { MapBoundary } from '../ui/MapBoundary';
 import { PlaceCard, categoryLabel, formatDistance } from '../ui/PlaceCard';
 import { ClampText } from '../ui/ClampText';
 import { PopularTimes } from '../ui/PopularTimes';
-import { Freshness } from '../ui/Freshness';
+import { Freshness, freshnessLabel } from '../ui/Freshness';
 import { sharePlace } from '../ui/share';
 import { Icon, categoryIcon, type IconName } from '../ui/Icon';
 import { Button, Card, Chip, EmptyState, RatingPill, Skeleton, Stars, Tap, Txt } from '../ui/primitives';
@@ -138,6 +138,7 @@ export default function PlaceScreen() {
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const reports = useReportStore();
   const flaggedClosed = id ? reports.reportedClosed(id) : false;
+  const confirmedAt = id ? reports.confirmedOpenAt(id) : null;
 
   useEffect(() => { savedStore.hydrate(); intents.hydrate(); reports.hydrate(); }, []);
 
@@ -772,6 +773,37 @@ export default function PlaceScreen() {
           <Txt variant="label" muted>Something wrong? Suggest an edit</Txt>
         </Tap>
 
+        {/* The good-news counterpart to "suggest an edit": one tap, no
+            account, no form. Every other signal a user can send about
+            scraped data makes it LESS trusted; this is the only one that
+            heals it. Hidden once the same user flagged it closed — the two
+            claims contradict. */}
+        {!flaggedClosed ? (
+          confirmedAt ? (
+            <View style={styles.confirmRow}>
+              <Icon name="check-circle" size={14} color={c.open} />
+              <Txt variant="label" color={c.open}>
+                You confirmed it was open {freshnessLabel(Math.floor(confirmedAt / 86_400_000))}
+              </Txt>
+            </View>
+          ) : (
+            <Tap
+              onPress={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                if (id) reports.submit(id, 'open_ok');
+              }}
+              haptic="none"
+              scaleTo={0.98}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm this place was open"
+              style={styles.confirmRow}
+            >
+              <Icon name="check-circle" size={14} color={c.textMuted} muted />
+              <Txt variant="label" muted>Been here? Tap if it was open</Txt>
+            </Tap>
+          )
+        ) : null}
+
         <Freshness place={place} />
       </Animated.ScrollView>
 
@@ -947,6 +979,10 @@ const styles = StyleSheet.create({
   toast: {
     position: 'absolute', alignSelf: 'center',
     paddingHorizontal: space.lg, paddingVertical: 11, borderRadius: radius.lg,
+  },
+  confirmRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 7, paddingVertical: space.sm, minHeight: 44,
   },
   reportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
