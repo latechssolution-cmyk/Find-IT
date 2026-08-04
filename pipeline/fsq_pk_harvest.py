@@ -1,5 +1,21 @@
 """Resumable Pakistan-wide harvest of Foursquare OS Places.
 
+    ⚠ NEEDS A HUGGING FACE TOKEN. The dataset is GATED ("gated":"auto"),
+    so an unauthenticated read returns:
+
+        "Access to dataset foursquare/fsq-os-places is restricted.
+         You must have access to it and be authenticated to access it."
+
+    This is why every previous run harvested zero files and every city is
+    Overture-only. To fix, once:
+        1. free account at huggingface.co
+        2. open the dataset page and accept the terms
+        3. create a READ token, then set it before running:
+               setx HF_TOKEN hf_xxx      (Windows, new shell after)
+               export HF_TOKEN=hf_xxx    (bash)
+
+    DuckDB's httpfs picks it up via the CREATE SECRET below.
+
 Strategy for hostile connections: process the release's ~90 parquet files ONE
 AT A TIME, extracting only country='PK' rows into out/_pk/parts/<file>.parquet.
 Each part is atomic (tmp + rename) and skipped once done, so any crash or
@@ -13,6 +29,7 @@ Run detached:  python -u fsq_pk_harvest.py >> out/_pk/harvest.log 2>&1
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import time
@@ -70,8 +87,25 @@ def harvest_one(path: str) -> bool:
     con = duckdb.connect()
     try:
         con.execute("LOAD httpfs;")
-        for pragma in ("SET http_retries=8;", "SET http_retry_wait_ms=2000;",
-                       "SET http_timeout=120000;"):
+        # The gate. Without this every read is refused, which is exactly how
+        # this script has silently harvested nothing since 30 July.
+        token = os.environ.get("HF_TOKEN", "").strip()
+        if token:
+            try:
+                con.execute(
+                    f"CREATE OR REPLACE SECRET hf (TYPE HUGGINGFACE, TOKEN '{token}');")
+            except duckdb.Error as e:
+                log(f"  could not register HF token ({e}) — reads will be refused")
+        else:
+            log("  HF_TOKEN not set — dataset is gated, reads WILL fail (see module docstring)")
+
+        # http_retries x http_timeout is the real ceiling on one file, and it
+        # was 8 x 120s of retrying a request that can never succeed while
+        # unauthenticated: the first file took ELEVEN HOURS to give up.
+        # Fail fast instead — a wrong token or a dead link should cost
+        # seconds, not a night.
+        for pragma in ("SET http_retries=2;", "SET http_retry_wait_ms=2000;",
+                       "SET http_timeout=60000;"):
             try:
                 con.execute(pragma)
             except duckdb.Error:
