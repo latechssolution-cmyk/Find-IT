@@ -23,7 +23,21 @@ import { Platform } from 'react-native';
 
 export type VoiceState = 'unavailable' | 'idle' | 'listening' | 'denied';
 
-/** Urdu first; the recogniser copes with code-switched English inside it. */
+/**
+ * Both languages, without asking the user to declare one.
+ *
+ * People here speak a continuous mix — "koi acha salon near me", "biryani
+ * ka best place" — so a language PICKER would be the wrong question: the
+ * honest answer is usually "both, in the same sentence". `ur-PK` is listed
+ * first because Android's Urdu model transcribes code-switched English
+ * inside an Urdu sentence far better than the English model handles Urdu
+ * words; en-PK then en-US are fallbacks for devices with no Urdu pack
+ * installed, which is common on cheaper handsets.
+ *
+ * Whatever comes back goes through the existing pipeline, which already
+ * folds Urdu script to Latin and forgives Roman-Urdu spelling — so
+ * "بریانی", "biryani" and "biryaani" all land on the same results.
+ */
 const LOCALES = ['ur-PK', 'en-PK', 'en-US'];
 
 interface SpeechModule {
@@ -89,8 +103,16 @@ export function useVoiceSearch(onResult: (text: string) => void) {
       if (perm && perm.granted === false) { setState('denied'); return; }
       heard.current = '';
       setState('listening');
+      // Pick the first locale the device actually has a pack for. Asking for
+      // ur-PK on a handset without it silently yields nothing on some
+      // Androids, which reads to the user as "the mic is broken".
+      let lang = LOCALES[LOCALES.length - 1];
+      try {
+        const supported: string[] = (await api.getSupportedLocales?.())?.locales ?? [];
+        lang = LOCALES.find((l) => supported.includes(l)) ?? lang;
+      } catch { /* older module build — fall through to en-US */ }
       api.start({
-        lang: LOCALES[0],
+        lang,
         interimResults: true,
         continuous: false,
         // Keep it on-device where possible: faster, works on a bad
