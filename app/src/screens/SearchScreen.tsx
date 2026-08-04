@@ -27,8 +27,26 @@ import { useScheme } from '../ui/useScheme';
 import { useBack } from '../hooks/useBack';
 import { useLocationStore } from '../hooks/useLocation';
 import { askOrSearch, type AskResult } from '../data/ask';
+import { useVoiceSearch } from '../hooks/useVoiceSearch';
 import { addRecent, getRecents, clearRecent } from '../hooks/recents';
 import { track } from '../hooks/analytics';
+
+/**
+ * The placeholder is the only place we can teach what the box accepts.
+ *
+ * It used to read "Try 'biryani', 'chai', 'pharmacy'…", which trains people
+ * to type single keywords — so the question-answering path would almost
+ * never fire and nobody would learn it existed. These rotate slowly through
+ * real questions instead, mixing the two kinds so neither is hidden.
+ */
+const PLACEHOLDERS = [
+  'cheap biryani that delivers',
+  'chemist open now',
+  'salon with parking',
+  'best karahi near me',
+  'kiryana store open late',
+  'family restaurant with parking',
+];
 
 /** What people here actually search for, not what a category tree thinks. */
 const POPULAR = [
@@ -75,6 +93,26 @@ export default function SearchScreen() {
   const [busy, setBusy] = useState(false);
   const [recents, setRecents] = useState<string[]>([]);
   const [asked, setAsked] = useState<AskResult | null>(null);
+  /** Speaking beats typing Roman Urdu; the button hides itself where the
+   *  recogniser doesn't exist. Runs the query straight through. */
+  const voice = useVoiceSearch(useCallback((text: string) => {
+    setQ(text);
+    run(text);
+  }, []));
+
+  /** Rotates only while the box is EMPTY — a placeholder changing under
+   *  someone mid-thought is a distraction, not a hint. */
+  /**
+   * One example per visit, chosen at random — deliberately NOT animated.
+   *
+   * A rotating hint was the first instinct, but it earns nothing: the user
+   * reads the placeholder once, in the second before they start typing, so
+   * only the FIRST value ever teaches anything. Cycling afterwards is motion
+   * next to a text cursor, which is a distraction. Random-per-mount gives the
+   * same coverage of examples across sessions with no timer to leak, no
+   * re-render every 3s, and nothing to go wrong.
+   */
+  const hint = useRef(PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]).current;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Chip taps do setQ + run together; without this the 150 ms suggest
    *  debounce fires AFTER run() clears it and buries the results under
@@ -169,13 +207,29 @@ export default function SearchScreen() {
             onChangeText={setQ}
             onSubmitEditing={() => run(q)}
             returnKeyType="search"
-            placeholder="Try “biryani”, “chai”, “pharmacy”…"
+            placeholder={`Try “${hint}”`}
             placeholderTextColor={c.textFaint}
             style={[styles.input, { color: c.text }]}
           />
           {q ? (
             <Tap onPress={() => { setQ(''); setResult(null); }} haptic="selection" scaleTo={0.9}>
               <Icon name="x" size={16} color={c.textMuted} />
+            </Tap>
+          ) : voice.available ? (
+            /* Only rendered where the mic can actually run — no dead button
+               on web or on a device without a recogniser. */
+            <Tap
+              onPress={() => (voice.state === 'listening' ? voice.stop() : voice.start())}
+              haptic="medium"
+              scaleTo={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={voice.state === 'listening' ? 'Stop listening' : 'Search by voice'}
+            >
+              <Icon
+                name={voice.state === 'listening' ? 'square' : 'mic'}
+                size={17}
+                color={voice.state === 'listening' ? c.accentText : c.textMuted}
+              />
             </Tap>
           ) : null}
         </View>
