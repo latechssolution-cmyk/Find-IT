@@ -24,7 +24,11 @@ export type EventName =
   | 'place_view' | 'place_call' | 'place_whatsapp' | 'place_directions'
   | 'place_share' | 'place_report' | 'place_save'
   | 'search_run' | 'search_zero' | 'filter_use' | 'city_hop'
-  | 'review_start' | 'review_submit';
+  | 'review_start' | 'review_submit'
+  /** A question answered by the AI layer rather than the keyword search.
+   *  Separate from search_run on purpose: if this stays rare, the feature
+   *  is not earning the tokens it costs and should be cut. */
+  | 'ask_run';
 
 interface Ev {
   n: EventName;

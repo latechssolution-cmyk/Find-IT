@@ -26,6 +26,7 @@ import { Button, Chip, EmptyState, PlaceCardSkeleton, Tap, Txt } from '../ui/pri
 import { useScheme } from '../ui/useScheme';
 import { useBack } from '../hooks/useBack';
 import { useLocationStore } from '../hooks/useLocation';
+import { askOrSearch, type AskResult } from '../data/ask';
 import { addRecent, getRecents, clearRecent } from '../hooks/recents';
 import { track } from '../hooks/analytics';
 
@@ -34,6 +35,22 @@ const POPULAR = [
   'biryani', 'karahi', 'chai', 'pizza', 'ice cream',
   'salon', 'gym', 'pharmacy', 'car wash', 'tailor',
 ];
+
+/**
+ * Is this a question or a keyword?
+ *
+ * Keywords are the overwhelming majority and the existing search answers
+ * them better than a model would — instantly, offline, and free. Only send
+ * the ones where understanding is actually the hard part: several words, or
+ * an explicit ask ("where", "cheap", "that delivers", "open now").
+ */
+const QUESTION_WORDS = /\b(where|which|what|who|nearest|closest|cheap|cheapest|budget|sasta|best|good|top|open|late|halal|delivers?|delivery|family|kids|women|wheelchair|parking|wifi|near me|around here|can i|is there|looking for|need a|want a)\b/i;
+
+export function looksLikeQuestion(q: string): boolean {
+  const words = q.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 4) return true;                 // "cheap biryani that delivers"
+  return words.length >= 2 && QUESTION_WORDS.test(q); // "cheap biryani"
+}
 
 const QUICK: { key: CategoryBucket; label: string }[] = [
   { key: 'food_drink', label: 'Food & Drink' },
@@ -57,6 +74,7 @@ export default function SearchScreen() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [recents, setRecents] = useState<string[]>([]);
+  const [asked, setAsked] = useState<AskResult | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Chip taps do setQ + run together; without this the 150 ms suggest
    *  debounce fires AFTER run() clears it and buries the results under
@@ -86,7 +104,31 @@ export default function SearchScreen() {
     submitted.current = term;
     setBusy(true);
     setSugs([]);
+    setAsked(null);
     try {
+      /**
+       * A QUESTION goes to the AI; a KEYWORD does not.
+       *
+       * "pharmacy" is answered better, faster and for free by the existing
+       * ranked search — routing it through a model would add a second of
+       * latency and a token bill to make the same result worse. The AI earns
+       * its place on "somewhere cheap for biryani that delivers", where the
+       * constraints are the point. So: only ask when the query actually
+       * looks like a question.
+       */
+      if (!cats && looksLikeQuestion(query)) {
+        const a = await askOrSearch(query, {
+          lat: coords?.lat, lng: coords?.lng, radiusM: rM ?? radiusM, limit: 24,
+        });
+        if (a.places.length) {
+          setAsked(a);
+          setResult({ places: a.places, total: a.places.length } as SearchResult);
+          track(a.degraded ? 'search_run' : 'ask_run', { len: query.length, n: a.places.length });
+          if (query) { await addRecent(query); getRecents().then(setRecents); }
+          return;
+        }
+      }
+
       const res = await getDataSource().search({
         q: query || null,
         lat: coords?.lat, lng: coords?.lng,
@@ -200,14 +242,42 @@ export default function SearchScreen() {
           )}
         />
       ) : result ? (
-        <ResultList
+        <>
+          {asked?.answer ? (
+            <Animated.View
+              entering={enter(FadeInDown.duration(240))}
+              style={[styles.answer, curve, { backgroundColor: c.accentWash }]}
+            >
+              <Icon name="zap" size={14} color={c.accentText} />
+              <View style={{ flex: 1, gap: 3 }}>
+                <Txt variant="body">{asked.answer}</Txt>
+                {/* What it understood. Shown because a wrong reading is
+                    otherwise invisible — the user just sees odd results and
+                    blames the app rather than rephrasing. */}
+                {asked.intent ? (
+                  <Txt variant="caption" faint>
+                    {[
+                      asked.intent.q,
+                      asked.intent.openOnly ? 'open now' : null,
+                      asked.intent.minRating ? `${asked.intent.minRating}★+` : null,
+                      asked.intent.priceHint,
+                      ...(asked.intent.facets ?? []),
+                      `${(asked.intent.radiusM / 1000).toFixed(0)} km`,
+                    ].filter(Boolean).join(' · ')}
+                  </Txt>
+                ) : null}
+              </View>
+            </Animated.View>
+          ) : null}
+          <ResultList
           result={result}
           onOpen={openPlace}
           onWiden={(m) => { setRadius(m); run(q, undefined, m); }}
           onCategory={(cat) => run('', [cat])}
           onTerm={(t) => { setQ(t); run(t); }}
           query={q}
-        />
+          />
+        </>
       ) : showZeroState ? (
         <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.xl }} keyboardShouldPersistTaps="handled">
           {recents.length > 0 ? (
@@ -377,6 +447,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sugMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  answer: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: space.sm,
+    marginHorizontal: space.lg, marginBottom: space.sm,
+    padding: space.md, borderRadius: radius.md,
+  },
   sugIcon: {
     width: 34, height: 34, borderRadius: radius.sm,
     alignItems: 'center', justifyContent: 'center',
