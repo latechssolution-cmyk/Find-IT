@@ -44,6 +44,24 @@ export function formatDistance(m?: number | null): string | null {
   return m < 950 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(m < 9500 ? 1 : 0)} km`;
 }
 
+/**
+ * "~8 min bike" — the answer people are actually computing from "2.9 km".
+ *
+ * Bikes are the dominant private transport in this market and they cut
+ * through congestion cars can't, so kilometres systematically overstate the
+ * trip. 18 km/h effective (city traffic, signals included) is deliberately
+ * conservative — an estimate that's occasionally pessimistic is trusted,
+ * one that's ever optimistic is a lie the user is standing in traffic
+ * remembering. Range-capped: under 400 m you'd walk, past 15 km a straight-
+ * line estimate stops being honest (real routes diverge too much).
+ */
+const BIKE_KMH = 18;
+export function bikeMinutes(m?: number | null): string | null {
+  if (m == null || m < 400 || m > 15_000) return null;
+  const mins = Math.ceil((m / 1000 / BIKE_KMH) * 60);
+  return `~${mins} min bike`;
+}
+
 function PlaceCardBase({
   place, onPress, index = 0, selected,
 }: {

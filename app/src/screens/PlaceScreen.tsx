@@ -26,13 +26,14 @@ import {
   colors, cream, curve, photoScrim, radius, shadow, space, categoryMeta,
 } from '../theme';
 import {
-  formatPrice, getDataSource, getLocalSource, isOpenNow,
+  distanceM, formatPrice, getDataSource, getLocalSource, isOpenNow,
   type GoogleReview, type Place,
 } from '../data';
+import { useLocationStore } from '../hooks/useLocation';
 import { parseFacets, splitFacets } from '../data/facets';
 import { Map } from '../ui/Map';
 import { MapBoundary } from '../ui/MapBoundary';
-import { PlaceCard, categoryLabel, formatDistance } from '../ui/PlaceCard';
+import { PlaceCard, bikeMinutes, categoryLabel, formatDistance } from '../ui/PlaceCard';
 import { ClampText } from '../ui/ClampText';
 import { PopularTimes } from '../ui/PopularTimes';
 import { Freshness, freshnessLabel } from '../ui/Freshness';
@@ -155,6 +156,9 @@ export default function PlaceScreen() {
   /** Skeletons are a promise; this is how long we let it go unkept. */
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const reports = useReportStore();
+  // Hook must sit above every conditional return (loading/missing states) or
+  // the hook count changes between renders and React hard-crashes the screen.
+  const { coords: searchCoords } = useLocationStore();
   const flaggedClosed = id ? reports.reportedClosed(id) : false;
   const confirmedAt = id ? reports.confirmedOpenAt(id) : null;
 
@@ -260,6 +264,17 @@ export default function PlaceScreen() {
   const open = isOpenNow(place.hours);
   const ramadan = isRamadan();
   const jummah = isJummahWindow();
+  /**
+   * getPlace() has no reference point, so place.distanceM is null on this
+   * screen — which silently blanked the identity line's distance for every
+   * deep link and card tap alike. Compute it from the chosen location.
+   * (The location store, not GPS: distance from "where I'm searching" is
+   * what the user is reasoning about, and it matches the list they came
+   * from. The hook itself lives above the early returns — see the top of
+   * the component — because this block only renders once `place` exists.)
+   */
+  const distM = place.distanceM
+    ?? (searchCoords ? distanceM(searchCoords.lat, searchCoords.lng, place.lat, place.lng) : null);
   const isFood = place.categoryBucket === 'food_drink';
   const todayHours = todaysHours(place.hours);
   const hist = parseHistogram(place.ratingHistogram);
@@ -404,7 +419,7 @@ export default function PlaceScreen() {
           <Txt variant="serifLg">{place.name}</Txt>
           <Txt variant="body" muted>
             {[categoryLabel(place), formatPrice(place.priceRange),
-              formatDistance(place.distanceM)].filter(Boolean).join(' · ')}
+              formatDistance(distM), bikeMinutes(distM)].filter(Boolean).join(' · ')}
           </Txt>
 
           {/* What people actually PAID, mined from review text. Shown only
