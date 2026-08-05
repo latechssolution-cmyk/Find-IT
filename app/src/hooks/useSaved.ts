@@ -155,12 +155,17 @@ async function enqueue(item: unknown): Promise<void> {
 /** Tag chips shown when writing a review — polarity follows the star rating,
  *  because "great value" makes no sense on a 1-star (PRD §5.7). */
 export const REVIEW_TAGS: Record<'good' | 'mixed' | 'bad', string[]> = {
+  // 'Has backup power' is the collectable half of load-shedding awareness
+  // (PRODUCT-IDEAS #1): whether a place stays usable through its area's
+  // outage slot is a fact only visitors know, and a tag is the cheapest way
+  // to gather it. Positive shelf only — its absence says nothing.
   good: ['Great food', 'Good value', 'Clean', 'Friendly staff', 'Fast service',
-         'Family friendly', 'Good parking', 'Cosy', 'Fresh', 'Worth the trip'],
+         'Family friendly', 'Good parking', 'Has backup power', 'Cosy', 'Fresh',
+         'Worth the trip'],
   mixed: ['Decent', 'Average', 'Bit pricey', 'Slow at peak', 'Hit or miss',
           'Good but crowded', 'OK for a quick stop'],
   bad: ['Overpriced', 'Slow service', 'Not clean', 'Rude staff', 'Wrong order',
-        'Too crowded', 'Poor quality', 'Hard to find'],
+        'Too crowded', 'Poor quality', 'Hard to find', 'No backup power'],
 };
 
 export function tagsFor(stars: number): string[] {

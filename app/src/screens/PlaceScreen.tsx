@@ -82,8 +82,26 @@ function whatsappNumber(raw?: string | null): string | null {
   return null;
 }
 
-/** Opens in Urdu-friendly Roman Urdu — how people actually message a shop. */
+/**
+ * WhatsApp opener, per category, in Roman Urdu — how people actually message
+ * a shop here. The generic "are you open?" wasted the one free line we get:
+ * a category-shaped first message ("table for tonight?", "is it in stock?")
+ * is the question the user was going to type anyway, so the chat starts one
+ * step further along. Every message still opens editable in WhatsApp — this
+ * is a draft, not something sent on their behalf.
+ */
+const WA_GREETINGS: Record<string, string> = {
+  food_drink: 'Assalam o alaikum! FIND IT par dekha. Kya table milegi aaj?',
+  shopping: 'Assalam o alaikum! FIND IT par aapki shop dekhi. Ek cheez ka poochna tha — stock mein hai?',
+  beauty: 'Assalam o alaikum! FIND IT par dekha. Appointment mil sakti hai? Charges kya hain?',
+  services: 'Assalam o alaikum! FIND IT par dekha. Ek kaam ka rate poochna tha.',
+  health: 'Assalam o alaikum! FIND IT par dekha. Timing aur fees ka poochna tha.',
+  automotive: 'Assalam o alaikum! FIND IT par workshop dekhi. Gaari ka kaam karwana tha — kab laoon?',
+  lodging: 'Assalam o alaikum! FIND IT par dekha. Room available hai? Rate kya hai?',
+  education: 'Assalam o alaikum! FIND IT par dekha. Admission/timing ka poochna tha.',
+};
 const WA_GREETING = 'Assalam o alaikum! FIND IT par aapki jagah dekhi. Kya abhi khuli hai?';
+const waGreeting = (bucket?: string | null) => WA_GREETINGS[bucket ?? ''] ?? WA_GREETING;
 
 const DAY_ORDER = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
 const DAY_NAME: Record<string, string> = {
@@ -188,7 +206,7 @@ export default function PlaceScreen() {
     if (!place || !wa) return;
     intents.record(place.id, 'whatsapp');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL(`https://wa.me/${wa}?text=${encodeURIComponent(WA_GREETING)}`);
+    Linking.openURL(`https://wa.me/${wa}?text=${encodeURIComponent(waGreeting(place.categoryBucket))}`);
   }, [place, wa, intents]);
 
   const callPlace = useCallback(async () => {
