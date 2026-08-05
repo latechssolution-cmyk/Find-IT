@@ -97,8 +97,15 @@ CITIES = {
     },
 }
 
-# Sweep order: the three the user named first, then the rest by size.
+# Karachi and everything after it are PAUSED by request (2026-08-05): the
+# priority is finishing Lahore completely, then a full cloud + GitHub sync.
+# Karachi's checkpoints in scraper/sweeps/karachi/ are intact — restore
+# SWEEP_ORDER = SWEEP_ORDER_FULL and restart the supervisor to resume
+# exactly where it left off (12 batches done, ~6k rows banked).
 SWEEP_ORDER = [
+    "faisalabad", "islamabad-rawalpindi", "lahore",
+]
+SWEEP_ORDER_FULL = [
     "faisalabad", "islamabad-rawalpindi", "lahore", "karachi", "multan",
     "peshawar", "gujranwala", "quetta", "sialkot", "hyderabad", "bahawalpur",
     "sargodha", "sukkur", "abbottabad", "rahim-yar-khan",
