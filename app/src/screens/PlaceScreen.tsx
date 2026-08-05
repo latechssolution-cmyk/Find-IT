@@ -44,7 +44,7 @@ import { useBack } from '../hooks/useBack';
 import { useSavedStore } from '../hooks/useSaved';
 import { useIntentStore } from '../hooks/useIntents';
 import { useReportStore } from '../hooks/useReports';
-import { isRamadan } from '../hooks/useRamadan';
+import { isJummahWindow, isRamadan, jummahLikely } from '../hooks/useRamadan';
 import { track } from '../hooks/analytics';
 import { ReportSheet } from '../ui/ReportSheet';
 
@@ -241,6 +241,7 @@ export default function PlaceScreen() {
   const meta = categoryMeta[place.categoryBucket ?? 'other'] ?? categoryMeta.other;
   const open = isOpenNow(place.hours);
   const ramadan = isRamadan();
+  const jummah = isJummahWindow();
   const isFood = place.categoryBucket === 'food_drink';
   const todayHours = todaysHours(place.hours);
   const hist = parseHistogram(place.ratingHistogram);
@@ -472,6 +473,21 @@ export default function PlaceScreen() {
               <Txt variant="caption" muted style={{ flex: 1 }}>
                 Ramadan — hours often shift{isFood ? ', many kitchens open after iftar' : ''}.
                 {place.phone ? ' Call ahead to confirm.' : ''}
+              </Txt>
+            </View>
+          ) : null}
+
+          {/* Jummah: the weekly version of the same honesty. Scraped hours
+              almost never encode the Friday prayer pause, so "Open now"
+              through 1–2:30pm Friday is wrong for most of the directory.
+              Category-gated — food mostly stays open for the post-prayer
+              rush, so claiming it there would be the opposite error. */}
+          {jummah && jummahLikely(place.categoryBucket) && open !== false ? (
+            <View style={[styles.ramadanNote, curve, { backgroundColor: c.surfaceAlt }]}>
+              <Icon name="clock" size={13} color={c.accentText} muted />
+              <Txt variant="caption" muted style={{ flex: 1 }}>
+                Jummah — many close 1:00–2:30pm for prayers.
+                {place.phone ? ' Call ahead if going now.' : ''}
               </Txt>
             </View>
           ) : null}
