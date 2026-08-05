@@ -22,7 +22,7 @@ interface RawPlace {
   a?: string; l?: string; ph?: string; w?: string; soc?: string[]; r?: number; rc?: number;
   pr?: string; h?: string; ck?: boolean; ph_urls?: string[]; menu?: string;
   order?: string; gid?: string; st?: string; hist?: string; attr?: string; d?: string;
-  pt?: number[][]; ts?: number;
+  pt?: number[][]; ts?: number; pm?: [number, number, number];
 }
 interface Bundle {
   city: string; count: number; places: RawPlace[];
@@ -57,6 +57,7 @@ function hydrate(r: RawPlace): Place {
     rating: r.r ?? null,
     ratingCount: r.rc ?? null,
     priceRange: r.pr ?? null,
+    priceMentions: r.pm ?? null,
     hours: r.h ?? null,
     cardsOk: !!r.ck,
     photoUrls: r.ph_urls ?? [],

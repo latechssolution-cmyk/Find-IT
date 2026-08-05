@@ -388,6 +388,22 @@ export default function PlaceScreen() {
               formatDistance(place.distanceM)].filter(Boolean).join(' · ')}
           </Txt>
 
+          {/* What people actually PAID, mined from review text. Shown only
+              when the mined range passed the pipeline's sanity gates —
+              a concrete rupee band beats Google's $ estimate wherever both
+              exist, but it renders as a supplement, labelled with its
+              provenance, not as an official price. */}
+          {place.priceMentions ? (
+            <View style={styles.mentionRow}>
+              <Icon name="tag" size={13} color={c.accentText} muted />
+              <Txt variant="caption" muted>
+                People mention Rs {place.priceMentions[0].toLocaleString()}–
+                {place.priceMentions[1].toLocaleString()}
+                {' · '}{place.priceMentions[2]} reviews
+              </Txt>
+            </View>
+          ) : null}
+
           {/* two rating shelves, never blended into one number */}
           <View style={styles.ratingRow}>
             {hasFindIt ? (
@@ -980,6 +996,7 @@ const styles = StyleSheet.create({
     position: 'absolute', alignSelf: 'center',
     paddingHorizontal: space.lg, paddingVertical: 11, borderRadius: radius.lg,
   },
+  mentionRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   confirmRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 7, paddingVertical: space.sm, minHeight: 44,

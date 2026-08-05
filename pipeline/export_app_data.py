@@ -17,6 +17,7 @@ import datetime as dt
 import gzip
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -84,6 +85,78 @@ def quality(r: dict) -> float:
         1 + min(math.log1p(n) / 12, 0.5))
 
 
+# ---------------------------------------------------------------- prices --
+#
+# Google's `$$` is meaningless here; what people trust is what other people
+# PAID, and they state it in reviews constantly: "biryani plate 350",
+# "cut 500 mein", "Rs. 1200 per head". Mining those gives every reviewed
+# place a concrete rupee range no competitor shows.
+#
+# Only currency-MARKED amounts are taken (Rs/PKR/rupees/rupay//-). Bare
+# numbers would drag in years, phone fragments, plot numbers and "5/5".
+_P_MARK_BEFORE = re.compile(r"(?:rs\.?|pkr|₨)\s*([\d,]{2,7})(?!\s*(?:%|percent))", re.I)
+_P_MARK_AFTER = re.compile(r"\b([\d,]{2,7})\s*(?:rs\b|rupees|rupay|rupaye|pkr|/-)", re.I)
+_P_RANGE = re.compile(r"(?:rs\.?|pkr|₨)\s*([\d,]{2,7})\s*(?:-|–|to)\s*([\d,]{2,7})", re.I)
+
+# Menu items to services; outside this it's rent, cars or typos.
+_P_MIN, _P_MAX = 30, 50_000
+
+
+def _amounts(text: str) -> list[int]:
+    out = []
+    for m in _P_RANGE.finditer(text):
+        out += [m.group(1), m.group(2)]
+    # Remove range matches before the single-amount passes, or "rs 300-450"
+    # yields 300 twice (once from the range, once from the rs-prefix rule).
+    rest = _P_RANGE.sub(" ", text)
+    out += _P_MARK_BEFORE.findall(rest)
+    out += _P_MARK_AFTER.findall(rest)
+    vals = []
+    for s in out:
+        try:
+            v = int(s.replace(",", ""))
+        except ValueError:
+            continue
+        if _P_MIN <= v <= _P_MAX:
+            vals.append(v)
+    return vals
+
+
+def mine_prices(reviews: list) -> list[int] | None:
+    """[lo, hi, n_reviews_mentioning] or None. Middle-heavy on purpose:
+    with enough samples the 20th–80th percentile drops the one person who
+    mentioned the Rs 40 water bottle and the one who quoted a deal platter."""
+    vals: list[int] = []
+    n_reviews = 0
+    for rv in reviews:
+        text = rv.get("text") if isinstance(rv, dict) else None
+        if not text:
+            continue
+        found = _amounts(text)
+        if found:
+            n_reviews += 1
+            vals.extend(found)
+    if len(vals) < 2 or n_reviews < 2:
+        return None                      # one mention is an anecdote
+    vals.sort()
+    if len(vals) >= 4:
+        # Trim at least one from each end: the Rs 40 water bottle and the
+        # Rs 4,500 deal platter are real amounts but not the typical spend.
+        cut_lo = max(1, int(len(vals) * 0.2))
+        cut_hi = min(len(vals) - 2, int(len(vals) * 0.8))
+        lo, hi = vals[cut_lo], vals[cut_hi]
+    else:
+        lo, hi = vals[0], vals[-1]
+    if lo == hi:
+        return None                      # a point is not a range worth a row
+    if hi > lo * 5:
+        # "Rs 3,500–36,000" is not a typical spend, it is two different
+        # services mentioned by two different people. Showing it would make
+        # the feature read as broken; no range beats a junk range.
+        return None
+    return [lo, hi, n_reviews]
+
+
 def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
     city_dir = ROOT / "out" / slug
     src = city_dir / "enriched.parquet"
@@ -100,13 +173,20 @@ def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
     keep = usable[:limit]
 
     reviews: dict[str, list] = {}
+    prices: dict[str, list[int]] = {}
     rp = city_dir / "google_reviews.parquet"
     if rp.exists():
         wanted = {r["id"] for r in keep}
         for r in pq.read_table(rp).to_pylist():
             if r["place_id"] in wanted:
                 try:
-                    revs = json.loads(r["reviews"])[:BUNDLED_REVIEWS]
+                    full = json.loads(r["reviews"])
+                    # Mine from the FULL cached set before truncating for the
+                    # bundle — the 3rd..10th reviews carry prices too.
+                    pm = mine_prices(full)
+                    if pm:
+                        prices[r["place_id"]] = pm
+                    revs = full[:BUNDLED_REVIEWS]
                     # Long reviews are the single heaviest thing in the file
                     # and the UI clamps to 2 lines behind a "See more" anyway.
                     for rv in revs:
@@ -145,6 +225,7 @@ def main(slug: str, limit: int = DEFAULT_LIMIT) -> None:
             # detail gallery from being a lone image; the cloud carries the
             # rest. Was the heaviest field in the bundle at 3.5 MB/city.
             "ph_urls": list(r.get("photo_urls") or [])[:2],
+            "pm": prices.get(r["id"]),   # [lo, hi, n] mined from review text
             "menu": r.get("menu_url"),
             "order": r.get("order_online_url"),
             "gid": r.get("google_place_id"),

@@ -26,6 +26,9 @@ export interface Place {
   fiRating?: number | null;
   fiRatingCount?: number;
   priceRange: string | null;
+  /** [lo, hi, nReviews] in PKR, mined from review text at export time —
+   *  what people say they PAID, not Google's $ band. */
+  priceMentions?: [number, number, number] | null;
   /** Compact "mo:9 AM–10 PM|tu:…" */
   hours: string | null;
   cardsOk: boolean;
