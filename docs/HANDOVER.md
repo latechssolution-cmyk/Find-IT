@@ -102,16 +102,21 @@ manual cycle is for when you want the cloud updated mid-city.
 
 ## 4. State of the world at handover
 
-- **Cloud (Mumbai):** 105,003 places — Lahore 49,039 · Islamabad/Rawalpindi
-  41,155 · Faisalabad 14,809 — 28,588 with cached Google reviews
-- **Scrape:** Faisalabad ✅ and Islamabad ✅ complete; **Lahore 45/60**
-  in progress; Karachi, Multan, Peshawar, Gujranwala seeded and queued;
-  8 more cities in `pipeline/cities.py` SWEEP_ORDER
-- **App:** feature-complete for v1; photo feed fully built but OFF
-  (`app/src/features.ts` — read the comment there before flipping it)
+- **Cloud (Mumbai):** 109,510 places — Lahore 53,546 · Islamabad/Rawalpindi
+  41,155 · Faisalabad 14,809 — 33,138 with cached Google reviews, 139 with
+  review-mined price ranges
+- **Scrape:** Faisalabad ✅, Islamabad ✅, **Lahore ✅** (53,557; +13,923
+  discovered); **Karachi in progress**; Multan, Peshawar, Gujranwala seeded
+  and queued; 8 more cities in `pipeline/cities.py` SWEEP_ORDER
+- **App:** feature-complete for v1 — including Urdu/English voice search,
+  AI question answering (keyless until launch), review-mined prices,
+  Jummah/Ramadan awareness, bike-time estimates, one-tap open-confirms;
+  photo feed fully built but OFF (`app/src/features.ts` — read the comment
+  there before flipping it)
 - **Known gaps:** Foursquare seed never harvested (needs an HF token —
   see the docstring in `pipeline/fsq_pk_harvest.py`); AI search built but
-  keyless; no crash reporting yet; never built as a release binary
+  keyless; crash reporting wired but DSN-less; never built as a release
+  binary
 
 ## 5. What to read next, in order
 

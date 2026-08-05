@@ -16,12 +16,13 @@ find-it/
 
 | | |
 |---|---|
-| Seeded (open data) | Faisalabad 7,955 · Lahore 39,634 · Islamabad/Rawalpindi 30,144 |
-| Scraped | Faisalabad **done** (14,809 · 6,854 discovered) · Islamabad/Rawalpindi **done** (40,775 · 10,631 discovered) · Lahore in progress · 11 cities queued |
+| Backend | **Live** — Supabase `ap-south-1` (Mumbai, 68 ms from Pakistan): **109,510 places**, 33,138 with cached reviews |
+| Scraped | Faisalabad ✅ 14,809 · Islamabad/Rawalpindi ✅ 41,158 · Lahore ✅ 53,557 (+13,923 discovered) · **Karachi in progress** · Multan/Peshawar/Gujranwala seeded, 8 more queued |
 | App bundles | 3 cities × 6,000 places; home city eager, others lazy-load by proximity |
-| App | 7 screens, typechecks clean, bundles for Android, 17/17 data checks pass |
-| Backend | **Live** — Supabase `ap-south-1` (Mumbai, 68 ms from Pakistan vs 107 ms Singapore): 102,315 places, 25,650 with cached Google reviews |
+| App | 10 screens (3 feed screens flag-gated off), typechecks clean, 24/24 data checks pass |
+| Search | typos · synonyms · Urdu script · Urdu/English **voice** · **AI questions** (Edge Function; keyless until launch) |
 | App payload | 36.5 MB of city data → 39.9 MB Android bundle (was 77 MB / 47 MB) |
+| Ship it | [docs/GO-LIVE.md](docs/GO-LIVE.md) (Play Store path) · [docs/HANDOVER.md](docs/HANDOVER.md) (system transfer) |
 
 ### Screens
 
@@ -34,6 +35,7 @@ find-it/
 | `/location` | Fixed-centre-pin picker, radius slider, live count, one-tap city hops |
 | `/review/[id]` | Stars → tag chips → optional text (30-second target) |
 | `/saved` | Saved places (offline) + appearance toggle (light/dark/auto) |
+| `/feed` `/gallery` `/post/[placeId]` | Photo feed + gallery + composer — **built, flag-gated off** (`src/features.ts`) |
 
 ## Running the app
 
