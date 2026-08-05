@@ -65,6 +65,17 @@ BATCH_TIMEOUT_S = 7200
 # Below this, a zero-row batch means no search ran (error), not an empty area.
 # Real batches take 300–2700s; the fastest legitimate one observed was ~400s.
 NO_SEARCH_S = 90
+# THIN AND FAST is the half-dead-network signature. Observed live (Karachi
+# b01c02): 24 rows in 338s from cells where the restaurant pass had just
+# yielded 739 — jobs were erroring on a degraded link that still resolved
+# DNS, so wait_for_network() saw nothing wrong and `if n:` marked the cell
+# done, permanently skipping everything it missed. A legitimately sparse
+# cell is slow-thin (82 rows / 1039s), not fast-thin: sparse still means
+# gmaps VISITED the cells. Fast-thin batches keep their rows but take a
+# strike instead of retiring, so the cell re-runs on a later cycle (ingest
+# dedupes by cid, so re-scraping is free of double-counting).
+THIN_ROWS = 100
+THIN_FAST_S = 900
 INACTIVITY = "4m"
 INGEST_EVERY = 10
 MAX_CYCLES = 100
@@ -288,9 +299,20 @@ def sweep_city(slug: str) -> bool:
         dt = time.time() - t0
         state["places_seen"] += n
 
-        if n:
+        if n and not (n < THIN_ROWS and dt < THIN_FAST_S):
             state["done"].append(batch["id"])
             state["failed"].pop(batch["id"], None)
+        elif n:
+            # Thin-fast: rows are kept (already on disk for ingest) but the
+            # cell is NOT retired — it takes a strike and re-runs next cycle.
+            # Three strikes and it counts as genuinely small, same rule as
+            # slow failures, so a truly tiny cell can't loop forever.
+            state["failed"][batch["id"]] = state["failed"].get(batch["id"], 0) + 1
+            strikes = state["failed"][batch["id"]]
+            if strikes >= 3:
+                state["done"].append(batch["id"])
+            log(f"  {batch['id']}: only {n} rows in {dt:.0f}s — degraded link "
+                f"suspected, will retry (strike {strikes}/3)")
         elif dt < NO_SEARCH_S:
             # Zero rows THAT FAST means no search actually ran — a real cell
             # takes many minutes even when sparse. Measured across 260 logged
