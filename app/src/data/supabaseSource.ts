@@ -79,6 +79,10 @@ function fromRow(r: any): Place {
     fiRating: r.fi_rating ?? null,
     fiRatingCount: r.fi_rating_count ?? 0,
     priceRange: r.price_range ?? null,
+    // jsonb [lo, hi, n] from mine_prices_cloud.py; only getPlace's SELECT *
+    // carries it — search rows omit the column and correctly land null here.
+    priceMentions: Array.isArray(r.price_mentions) && r.price_mentions.length === 3
+      ? (r.price_mentions as [number, number, number]) : null,
     hours: r.hours ?? null,
     cardsOk: !!r.cards_ok,
     photoUrls: r.photo_urls ?? [],
