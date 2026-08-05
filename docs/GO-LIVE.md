@@ -100,6 +100,25 @@ A lawyer's read is advisable, not blocking.
 
 ---
 
+## Release builds — DONE (5 Aug 2026)
+
+Both artifacts are built, locally, signed with the project's upload key:
+
+| File | Size | Use |
+|---|---|---|
+| `app/android/app/build/outputs/bundle/release/app-release.aab` | 107.5 MB | **Play Console upload** (Play splits per device; users download ~40 MB) |
+| `app/android/app/build/outputs/apk/release/app-release.apk` | 196.6 MB | direct install on a test phone (universal — all 4 ABIs, hence bigger) |
+
+- Signing: `CN=FIND IT, O=LA-Tech` upload key —
+  keystore + credentials in `C:\Users\HP\android-build\` (OUTSIDE the repo;
+  covered in HANDOVER.md §1). SHA-256
+  `a6c2...b520`, verified with apksigner.
+- Toolchain: local Gradle (JDK 17 + SDK 36 under `C:\Users\HP\android-build\`),
+  chosen over EAS because it needs no Expo account. Rebuild any time with
+  `gradlew bundleRelease` / `assembleRelease` in `app/android/`.
+- To install the APK on a phone: copy it over, or
+  `adb install app-release.apk` with the phone in USB debugging.
+
 ## What I do once you've done the above
 
 Nothing here needs you again:
