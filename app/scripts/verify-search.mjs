@@ -184,5 +184,26 @@ if (sample) {
   check('review cache is bounded (≤10)', rv.length <= 10, `${rv.length}`);
 }
 
+console.log('\n— mined prices (quality gates from export_app_data.mine_prices) —');
+{
+  // Every pm the pipeline ships must satisfy the gates that make the
+  // feature credible. One junk range ("Rs 3,500–36,000" for a salon) makes
+  // it read as broken, so the gates are load-bearing, not stylistic.
+  const withPm = bundle.places.filter((p) => p.pm != null);
+  const shapeOk = withPm.every((p) => Array.isArray(p.pm) && p.pm.length === 3
+    && p.pm.every((v) => Number.isFinite(v) && v > 0));
+  const ordered = withPm.every((p) => p.pm[0] < p.pm[1]);
+  const plausible = withPm.every((p) => p.pm[0] >= 30 && p.pm[1] <= 50000);
+  const tight = withPm.every((p) => p.pm[1] <= p.pm[0] * 5);
+  const attested = withPm.every((p) => p.pm[2] >= 2);
+  console.log(`  ${withPm.length} places carry mined prices`);
+  check('pm shape is [lo, hi, n] of positive numbers', shapeOk);
+  check('pm ranges are ordered (lo < hi)', ordered);
+  check('pm within plausible rupee bounds (30..50k)', plausible);
+  check('pm range no wider than 5x its floor', tight,
+    withPm.filter((p) => p.pm[1] > p.pm[0] * 5).map((p) => p.n).slice(0, 2).join(', '));
+  check('pm backed by ≥2 reviews', attested);
+}
+
 console.log(`\n${fail === 0 ? 'ALL CHECKS PASSED' : `${fail} FAILED`} (${pass} passed)\n`);
 process.exit(fail === 0 ? 0 : 1);
