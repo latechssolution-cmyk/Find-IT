@@ -125,8 +125,13 @@ Nothing here needs you again:
 
 - wire each key, deploy the `ask` Edge Function
 - add Sentry, set launch-week alert thresholds
-- `eas build` → **test the release binary on a real low-end Android** (the
-  app has never run as a release build; Hermes and R8 differ from dev)
+- ~~test the release binary~~ **DONE (6 Aug):** the signed release APK ran
+  end to end on an Android 16 emulator — onboarding, foreground-only
+  permission flow (the background-location block held through R8), and
+  Explore with the native MapLibre map drawing live tiles and correctly
+  thinned rating markers; zero runtime errors in logcat. Screenshots:
+  `C:/Users/HP/android-build/smoke-*.png`. A pass on a real low-end phone
+  is still worthwhile for touch/perf feel, but the binary is proven.
 - verify the pre-launch report, RTL with Urdu, process-death restore
 - run the offline and hanging-cloud suites against the real APK
 - fill the Data Safety form from the prepared answers
