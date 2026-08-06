@@ -133,7 +133,7 @@ Nothing here needs you again:
   `C:/Users/HP/android-build/smoke-*.png`. A pass on a real low-end phone
   is still worthwhile for touch/perf feel, but the binary is proven.
 - verify the pre-launch report, RTL with Urdu, process-death restore
-- run the offline and hanging-cloud suites against the real APK
+- ~~run the offline suite against the real APK~~ **DONE (6 Aug):** cold-launched the release build in airplane mode on the emulator - bundled places render as markers, chips and search work, tiles even come from MapLibre's disk cache, zero runtime errors (smoke-offline.png)
 - fill the Data Safety form from the prepared answers
 - rebuild all cities with Foursquare folded in, once the HF token exists
 
